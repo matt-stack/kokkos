@@ -164,7 +164,7 @@ class RawMemoryAllocationFailure : public std::bad_alloc {
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 
-#if defined(KOKKOS_ENABLE_CUDA) && defined(__CUDA_ARCH__)
+#if defined(KOKKOS_ENABLE_CUDA) && (STDPAR_INCLUDE_DEVICE_CODE)
 
 #if defined(__APPLE__) || defined(KOKKOS_ENABLE_DEBUG_BOUNDS_CHECK)
 // cuda_abort does not abort when building for macOS.
@@ -190,7 +190,7 @@ class RawMemoryAllocationFailure : public std::bad_alloc {
 namespace Kokkos {
 KOKKOS_IMPL_ABORT_NORETURN KOKKOS_INLINE_FUNCTION void abort(
     const char *const message) {
-#if defined(KOKKOS_ENABLE_CUDA) && defined(__CUDA_ARCH__)
+#if defined(KOKKOS_ENABLE_CUDA) && (STDPAR_INCLUDE_DEVICE_CODE)
   Kokkos::Impl::cuda_abort(message);
 #elif defined(KOKKOS_ENABLE_HIP) && defined(__HIP_DEVICE_COMPILE__)
   Kokkos::Impl::hip_abort(message);

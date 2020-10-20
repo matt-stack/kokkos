@@ -59,7 +59,7 @@ namespace Kokkos {
 //----------------------------------------------------------------------------
 
 #if defined(KOKKOS_ENABLE_CUDA)
-#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 __inline__ __device__ int atomic_exchange(volatile int* const dest,
                                           const int val) {
@@ -183,7 +183,7 @@ __inline__ __device__ void atomic_assign(
 
 //----------------------------------------------------------------------------
 
-#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 template <typename T>
@@ -401,7 +401,7 @@ inline void atomic_assign(volatile T* const dest_v, const T val) {
 #endif
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC
-#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
+#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(KOKKOS_ENABLE_CUDA)
 template <typename T>
 __inline__ __device__ T atomic_exchange(volatile T* const,
                                         const Kokkos::Impl::identity_t<T>) {

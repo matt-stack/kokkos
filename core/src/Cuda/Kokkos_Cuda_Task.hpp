@@ -598,40 +598,44 @@ class TaskExec<Kokkos::Cuda, Scheduler> {
  public:
   using thread_team_member = TaskExec;
 
-#if defined(__CUDA_ARCH__)
-  __device__ int team_rank() const { return threadIdx.y; }
-  __device__ int team_size() const { return m_team_size; }
-  //__device__ int league_rank() const { return threadIdx.z; }
-  __device__ int league_rank() const {
-    return blockIdx.x * blockDim.z + threadIdx.z;
-  }
-  __device__ int league_size() const { return blockDim.z * gridDim.x; }
+  if (STDPAR_INCLUDE_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE
+      __device__ int team_rank() const { return threadIdx.y; }
+      __device__ int team_size() const { return m_team_size; }
+      //__device__ int league_rank() const { return threadIdx.z; }
+      __device__ int league_rank() const {
+        return blockIdx.x * blockDim.z + threadIdx.z;
+      }
+      __device__ int league_size() const { return blockDim.z * gridDim.x; }
 
-  __device__ void team_barrier() const {
-    if (1 < m_team_size) {
-      KOKKOS_IMPL_CUDA_SYNCWARP;
-    }
-  }
+      __device__ void team_barrier() const {
+        if (1 < m_team_size) {
+          KOKKOS_IMPL_CUDA_SYNCWARP;
+        }
+      }
 
-  template <class ValueType>
-  __device__ void team_broadcast(ValueType& val, const int thread_id) const {
-    if (1 < m_team_size) {
-      // WarpSize = blockDim.X * blockDim.y
-      // thread_id < blockDim.y
-      ValueType tmp(val);  // input might not be register variable
-      Impl::in_place_shfl(val, tmp, blockDim.x * thread_id, WarpSize);
-    }
+      template <class ValueType>
+      __device__ void team_broadcast(ValueType& val, const int thread_id) const {
+        if (1 < m_team_size) {
+          // WarpSize = blockDim.X * blockDim.y
+          // thread_id < blockDim.y
+          ValueType tmp(val);  // input might not be register variable
+          Impl::in_place_shfl(val, tmp, blockDim.x * thread_id, WarpSize);
+        }
+      }
+    #endif
   }
-
-#else
-  __host__ int team_rank() const { return 0; }
-  __host__ int team_size() const { return 0; }
-  __host__ int league_rank() const { return 0; }
-  __host__ int league_size() const { return 0; }
-  __host__ void team_barrier() const {}
-  template <class ValueType>
-  __host__ void team_broadcast(ValueType&, const int) const {}
-#endif
+  else {
+    #if STDPAR_INCLUDE_HOST_CODE
+      __host__ int team_rank() const { return 0; }
+      __host__ int team_size() const { return 0; }
+      __host__ int league_rank() const { return 0; }
+      __host__ int league_size() const { return 0; }
+      __host__ void team_barrier() const {}
+      template <class ValueType>
+      __host__ void team_broadcast(ValueType&, const int) const {}
+    #endif
+  }
 
   KOKKOS_INLINE_FUNCTION Scheduler const& scheduler() const noexcept {
     return m_scheduler;
@@ -659,32 +663,36 @@ struct TeamThreadRangeBoundariesStruct<iType,
   const iType increment;
   member_type const& thread;
 
-#if defined(__CUDA_ARCH__)
+  if (STDPAR_INCLUDE_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE
 
-  __device__ inline TeamThreadRangeBoundariesStruct(
-      member_type const& arg_thread, const iType& arg_count)
-      : start(threadIdx.y),
-        end(arg_count),
-        increment(blockDim.y),
-        thread(arg_thread) {}
+      __device__ inline TeamThreadRangeBoundariesStruct(
+          member_type const& arg_thread, const iType& arg_count)
+          : start(threadIdx.y),
+            end(arg_count),
+            increment(blockDim.y),
+            thread(arg_thread) {}
 
-  __device__ inline TeamThreadRangeBoundariesStruct(
-      member_type const& arg_thread, const iType& arg_start,
-      const iType& arg_end)
-      : start(arg_start + threadIdx.y),
-        end(arg_end),
-        increment(blockDim.y),
-        thread(arg_thread) {}
+      __device__ inline TeamThreadRangeBoundariesStruct(
+          member_type const& arg_thread, const iType& arg_start,
+          const iType& arg_end)
+          : start(arg_start + threadIdx.y),
+            end(arg_end),
+            increment(blockDim.y),
+            thread(arg_thread) {}
+    #endif
+  }
+  else {
+    #if STDPAR_INCLUDE_HOST_CODE
 
-#else
+      TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
+                                      const iType& arg_count);
 
-  TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
-                                  const iType& arg_count);
+      TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
+                                      const iType& arg_start, const iType& arg_end);
 
-  TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
-                                  const iType& arg_start, const iType& arg_end);
-
-#endif
+    #endif
+  }
 };
 
 //----------------------------------------------------------------------------
@@ -700,33 +708,37 @@ struct ThreadVectorRangeBoundariesStruct<iType,
   const index_type increment;
   const member_type& thread;
 
-#if defined(__CUDA_ARCH__)
+  if (STDPAR_INCLUDE_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE
 
-  __device__ inline ThreadVectorRangeBoundariesStruct(
-      member_type const& arg_thread, const index_type& arg_count)
-      : start(threadIdx.x),
-        end(arg_count),
-        increment(blockDim.x),
-        thread(arg_thread) {}
+      __device__ inline ThreadVectorRangeBoundariesStruct(
+          member_type const& arg_thread, const index_type& arg_count)
+          : start(threadIdx.x),
+            end(arg_count),
+            increment(blockDim.x),
+            thread(arg_thread) {}
 
-  __device__ inline ThreadVectorRangeBoundariesStruct(
-      member_type const& arg_thread, const index_type& arg_begin,
-      const index_type& arg_end)
-      : start(arg_begin + threadIdx.x),
-        end(arg_end),
-        increment(blockDim.x),
-        thread(arg_thread) {}
+      __device__ inline ThreadVectorRangeBoundariesStruct(
+          member_type const& arg_thread, const index_type& arg_begin,
+          const index_type& arg_end)
+          : start(arg_begin + threadIdx.x),
+            end(arg_end),
+            increment(blockDim.x),
+            thread(arg_thread) {}
+    #endif
+  }
+  else {
+    #if STDPAR_INCLUDE_HOST_CODE
 
-#else
+      ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
+                                        const index_type& arg_count);
 
-  ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
-                                    const index_type& arg_count);
+      ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
+                                        const index_type& arg_begin,
+                                        const index_type& arg_end);
 
-  ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
-                                    const index_type& arg_begin,
-                                    const index_type& arg_end);
-
-#endif
+    #endif
+  }
 };
 
 }  // namespace Impl
@@ -1162,30 +1174,34 @@ template <class FunctorType, class Scheduler>
 KOKKOS_INLINE_FUNCTION void single(
     const Impl::VectorSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>&,
     const FunctorType& lambda) {
-#ifdef __CUDA_ARCH__
-  if (threadIdx.x == 0) lambda();
-#endif
+  if (STDPAR_INCLUDE_DEVICE_CODE)
+    #if STDPAR_INCLUDE_DEVICE_CODE
+      if (threadIdx.x == 0) lambda();
+    #endif
 }
 
 template <class FunctorType, class Scheduler>
 KOKKOS_INLINE_FUNCTION void single(
     const Impl::ThreadSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>&,
     const FunctorType& lambda) {
-#ifdef __CUDA_ARCH__
-  if (threadIdx.x == 0 && threadIdx.y == 0) lambda();
-#endif
+  if (STDPAR_INCLUDE_DEVICE_CODE)
+    #if STDPAR_INCLUDE_DEVICE_CODE
+      if (threadIdx.x == 0 && threadIdx.y == 0) lambda();
+    #endif
 }
 
 template <class FunctorType, class ValueType, class Scheduler>
 KOKKOS_INLINE_FUNCTION void single(
     const Impl::VectorSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>& s,
     const FunctorType& lambda, ValueType& val) {
-#ifdef __CUDA_ARCH__
-  if (threadIdx.x == 0) lambda(val);
-  if (1 < s.team_member.team_size()) {
-    val = shfl(val, 0, blockDim.x);
+  if (STDPAR_INCLUDE_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE
+      if (threadIdx.x == 0) lambda(val);
+      if (1 < s.team_member.team_size()) {
+        val = shfl(val, 0, blockDim.x);
+      }
+    #endif
   }
-#endif
 }
 
 template <class FunctorType, class ValueType, class Scheduler>
@@ -1193,12 +1209,14 @@ KOKKOS_INLINE_FUNCTION void single(
     const Impl::ThreadSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>&
         single_struct,
     const FunctorType& lambda, ValueType& val) {
-#ifdef __CUDA_ARCH__
-  if (threadIdx.x == 0 && threadIdx.y == 0) {
-    lambda(val);
+  if (STDPAR_INCLUDE_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE
+      if (threadIdx.x == 0 && threadIdx.y == 0) {
+        lambda(val);
+      }
+      single_struct.team_member.team_broadcast(val, 0);
+    #endif
   }
-  single_struct.team_member.team_broadcast(val, 0);
-#endif
 }
 
 }  // namespace Kokkos
