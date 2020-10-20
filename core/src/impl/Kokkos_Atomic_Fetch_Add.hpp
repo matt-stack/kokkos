@@ -59,7 +59,7 @@ namespace Kokkos {
 //----------------------------------------------------------------------------
 
 #if defined(KOKKOS_ENABLE_CUDA)
-#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 // Support for int, unsigned int, unsigned long long int, and float
 
@@ -84,7 +84,7 @@ __inline__ __device__ float atomic_fetch_add(volatile float* const dest,
   return atomicAdd((float*)dest, val);
 }
 
-#if (600 <= __CUDA_ARCH__)
+#if (600 <= STDPAR_CUDA_ARCH)
 __inline__ __device__ double atomic_fetch_add(volatile double* const dest,
                                               const double val) {
   return atomicAdd((double*)dest, val);
@@ -181,7 +181,7 @@ atomic_fetch_add(volatile T* const dest,
 #endif
 //----------------------------------------------------------------------------
 #if !defined(KOKKOS_ENABLE_ROCM_ATOMICS) || !defined(KOKKOS_ENABLE_HIP_ATOMICS)
-#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 #if defined(KOKKOS_ENABLE_ASM) && (defined(KOKKOS_ENABLE_ISA_X86_64) || \
@@ -383,7 +383,7 @@ T atomic_fetch_add(volatile T* const dest_v,
 //----------------------------------------------------------------------------
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC
-#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
+#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(KOKKOS_ENABLE_CUDA)
 template <typename T>
 __inline__ __device__ T atomic_fetch_add(volatile T* const,
                                          Kokkos::Impl::identity_t<T>) {

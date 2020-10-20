@@ -70,7 +70,7 @@ namespace Kokkos {
 
 #if defined(KOKKOS_ENABLE_CUDA)
 
-#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 __inline__ __device__ int atomic_compare_exchange(volatile int* const dest,
                                                   const int compare,
                                                   const int val) {
@@ -149,7 +149,7 @@ __inline__ __device__ T atomic_compare_exchange(
 // GCC native CAS supports int, long, unsigned int, unsigned long.
 // Intel native CAS support int and long with the same interface as GCC.
 #if !defined(KOKKOS_ENABLE_ROCM_ATOMICS) || !defined(KOKKOS_ENABLE_HIP_ATOMICS)
-#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 inline int atomic_compare_exchange(volatile int* const dest, const int compare,
@@ -319,7 +319,7 @@ KOKKOS_INLINE_FUNCTION T atomic_compare_exchange(volatile T* const dest_v,
 #endif  // !defined ROCM_ATOMICS
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC
-#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
+#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(KOKKOS_ENABLE_CUDA)
 template <typename T>
 __inline__ __device__ T
 atomic_compare_exchange(volatile T* const, const Kokkos::Impl::identity_t<T>,
@@ -368,11 +368,11 @@ KOKKOS_INLINE_FUNCTION bool _atomic_compare_exchange_strong_fallback(
   return Kokkos::atomic_compare_exchange_strong(dest, compare, val);
 }
 
-#if (defined(KOKKOS_ENABLE_GNU_ATOMICS) && !defined(__CUDA_ARCH__)) ||   \
-    (defined(KOKKOS_ENABLE_INTEL_ATOMICS) && !defined(__CUDA_ARCH__)) || \
+#if (defined(KOKKOS_ENABLE_GNU_ATOMICS) && (STDPAR_INCLUDE_HOST_CODE)) ||   \
+    (defined(KOKKOS_ENABLE_INTEL_ATOMICS) && (STDPAR_INCLUDE_HOST_CODE)) || \
     defined(KOKKOS_ENABLE_CUDA_ASM_ATOMICS)
 
-#if defined(__CUDA_ARCH__)
+#if (STDPAR_INCLUDE_DEVICE_CODE)
 #define KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH __inline__ __device__
 #else
 #define KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH inline

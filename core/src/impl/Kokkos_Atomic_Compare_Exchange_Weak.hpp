@@ -63,9 +63,9 @@ namespace Kokkos {
 
 #if defined(KOKKOS_ENABLE_CUDA)
 
-#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
-#if __CUDA_ARCH__ >= 700
+#if STDPAR_CUDA_ARCH >= 700
 // See: https://github.com/ogiroux/freestanding
 #define kokkos_cuda_internal_cas_release_32(ptr, old, expected, desired) \
   asm volatile("atom.cas.release.sys.b32 %0, [%1], %2, %3;"              \
@@ -111,7 +111,7 @@ __inline__ __device__ bool atomic_compare_exchange_weak(
   memcpy(&tmp, &desired, sizeof(T));
   memcpy(&old, expected, sizeof(T));
   int32_t old_tmp = old;
-#if __CUDA_ARCH__ >= 700
+#if STDPAR_CUDA_ARCH >= 700
   switch (success_order) {
     case std::memory_order_seq_cst:
       // sequentially consistent is just an acquire with a seq_cst fence
@@ -148,7 +148,7 @@ __inline__ __device__ bool atomic_compare_exchange_weak(
   atomicCAS((T*)dest, old_tmp, tmp);
 #endif
   bool const rv = (old == old_tmp);
-#if __CUDA_ARCH__ < 700
+#if STDPAR_CUDA_ARCH < 700
   if (rv) {
     if (success_order == std::memory_order_acquire ||
         success_order == std::memory_order_consume ||
@@ -184,7 +184,7 @@ bool atomic_compare_exchange_weak(
   memcpy(&tmp, &desired, sizeof(T));
   memcpy(&old, expected, sizeof(T));
   int64_t old_tmp = old;
-#if __CUDA_ARCH__ >= 700
+#if STDPAR__CUDA_ARCH >= 700
   switch (success_order) {
     case std::memory_order_seq_cst:
       // sequentially consistent is just an acquire with a seq_cst fence
@@ -217,7 +217,7 @@ bool atomic_compare_exchange_weak(
   return rv;
 }
 
-#endif  // defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#endif  // defined(STDPAR__CUDA_ARCH) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 #endif  // defined( KOKKOS_ENABLE_CUDA )
 
@@ -227,7 +227,7 @@ bool atomic_compare_exchange_weak(
 // GCC native CAS supports int, long, unsigned int, unsigned long.
 // Intel native CAS support int and long with the same interface as GCC.
 #if !defined(KOKKOS_ENABLE_ROCM_ATOMICS) || !defined(KOKKOS_ENABLE_HIP_ATOMICS)
-#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 inline int atomic_compare_exchange(volatile int* const dest, const int compare,

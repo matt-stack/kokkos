@@ -118,17 +118,40 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 
+// Use STDPAR variables as a workaround for the absence of __CUDA_ARCH__ for nvc++.
+
+#if defined(__NVCOMPILER_CUDA__)
+#define STDPAR_IS_DEVICE_CODE __builtin_is_device_code()
+#define STDPAR_IS_HOST_CODE (!__builtin_is_device_code())
+#define STDPAR_INCLUDE_DEVICE_CODE 1
+#define STDPAR_INCLUDE_HOST_CODE 1
+#define STDPAR_CUDA_ARCH __NVCOMPILER_CUDA_ARCH__
+#if(__NVCOMPILER_CUDA_ARCH__ < 300)
+    #error "Cuda device capability >= 3.0 is required."
+#endif 
+#elif defined(__CUDA_ARCH__)
+#define STDPAR_IS_DEVICE_CODE 1
+#define STDPAR_IS_HOST_CODE 0
+#define STDPAR_INCLUDE_DEVICE_CODE 1
+#define STDPAR_INCLUDE_HOST_CODE 0
+#define STDPAR_CUDA_ARCH __CUDA_ARCH__
+#if(__CUDA_ARCH__ < 300)
+    #error "Cuda device capability >= 3.0 is required."
+#endif 
+#else
+#define STDPAR_IS_DEVICE_CODE 0
+#define STDPAR_IS_HOST_CODE 1
+#define __CUDA_ARCH__ 0
+#define STDPAR_INCLUDE_HOST_CODE 1
+#define STDPAR_CUDA_ARCH 0
+#endif 
+
 #if defined(_WIN32)
 #define KOKKOS_IMPL_WINDOWS_CUDA
 #endif
 
 #if !defined(CUDA_VERSION)
 #error "#include <cuda.h> did not define CUDA_VERSION."
-#endif
-
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 300)
-// Compiling with CUDA compiler for device code.
-#error "Cuda device capability >= 3.0 is required."
 #endif
 
 #ifdef KOKKOS_ENABLE_CUDA_LAMBDA
@@ -149,7 +172,7 @@
 #define KOKKOS_ENABLE_PRE_CUDA_10_DEPRECATION_API
 #endif
 
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 700) && \
+#if defined(SDTDPAR_CUDA_ARCH) && (STDPAR_CUDA_ARCH >= 700) && \
     !defined(KOKKOS_IMPL_WINDOWS_CUDA)
 // PTX atomics with memory order semantics are only available on volta and later
 #if !defined(KOKKOS_DISABLE_CUDA_ASM)
@@ -161,6 +184,7 @@
 #endif
 #endif
 #endif
+
 
 #endif  // #if defined( KOKKOS_ENABLE_CUDA ) && defined( __CUDACC__ )
 
@@ -456,7 +480,7 @@
 //----------------------------------------------------------------------------
 
 #if defined(KOKKOS_COMPILER_NVCC)
-#if defined(__CUDA_ARCH__)
+#if (STDPAR_INCLUDE_DEVICE_CODE)
 #define KOKKOS_ENABLE_PRAGMA_UNROLL 1
 #endif
 #endif
@@ -587,7 +611,7 @@
 //----------------------------------------------------------------------------
 // Determine for what space the code is being compiled:
 
-#if defined(__CUDACC__) && defined(__CUDA_ARCH__) && defined(KOKKOS_ENABLE_CUDA)
+#if defined(__CUDACC__) && (STDPAR_INCLUDE_DEVICE_CODE) && defined(KOKKOS_ENABLE_CUDA)
 #define KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA
 #elif defined(__HCC__) && defined(__HCC_ACCELERATOR__) && \
     defined(KOKKOS_ENABLE_ROCM)
@@ -624,7 +648,7 @@
 
 #if defined(KOKKOS_ENABLE_CUDA)
 #define KOKKOS_IMPL_CUDA_VERSION_9_WORKAROUND
-#if (__CUDA_ARCH__)
+#if (STDPAR_INCLUDE_DEVICE_CODE)
 #define KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
 #endif
 #endif
@@ -671,7 +695,7 @@
 
 // WORKAROUND for AMD aomp which apparently defines CUDA_ARCH when building for
 // AMD GPUs with OpenMP Target ???
-#if defined(__CUDA_ARCH__) && !defined(__CUDACC__) && \
+#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(__CUDACC__) && \
     !defined(KOKKOS_ENABLE_HIP) && !defined(KOKKOS_ENABLE_CUDA)
 #undef __CUDA_ARCH__
 #endif

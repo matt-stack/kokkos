@@ -148,11 +148,14 @@ class Cuda {
   /// \brief True if and only if this method is being called in a
   ///   thread-parallel function.
   KOKKOS_INLINE_FUNCTION static int in_parallel() {
-#if defined(__CUDA_ARCH__)
-    return true;
-#else
-    return false;
-#endif
+    if (STDPAR_IS_DEVICE_CODE) {
+      #if STDPAR_INCLUDE_DEVICE_CODE
+        return true;
+      #endif
+      return false;
+    }
+    else
+      return false;
   }
 
   /** \brief  Set the device in a "sleep" state.
@@ -231,14 +234,14 @@ class Cuda {
 
   /// \brief Cuda device architecture of the selected device.
   ///
-  /// This matches the __CUDA_ARCH__ specification.
+  /// This matches the __STDPAR_CUDA_ARCH__ specification.
   static size_type device_arch();
 
   //! Query device count.
   static size_type detect_device_count();
 
   /** \brief  Detect the available devices and their architecture
-   *          as defined by the __CUDA_ARCH__ specification.
+   *          as defined by the __STDPAR_CUDA_ARCH__ specification.
    */
   static std::vector<unsigned> detect_device_arch();
 

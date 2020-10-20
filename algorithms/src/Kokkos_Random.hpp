@@ -618,24 +618,31 @@ struct Random_UniqueIndex<Kokkos::Cuda> {
   using locks_view_type = View<int*, Kokkos::Cuda>;
   KOKKOS_FUNCTION
   static int get_state_idx(const locks_view_type& locks_) {
-#ifdef __CUDA_ARCH__
-    const int i_offset =
-        (threadIdx.x * blockDim.y + threadIdx.y) * blockDim.z + threadIdx.z;
-    int i = (((blockIdx.x * gridDim.y + blockIdx.y) * gridDim.z + blockIdx.z) *
-                 blockDim.x * blockDim.y * blockDim.z +
-             i_offset) %
-            locks_.extent(0);
-    while (Kokkos::atomic_compare_exchange(&locks_(i), 0, 1)) {
-      i += blockDim.x * blockDim.y * blockDim.z;
-      if (i >= static_cast<int>(locks_.extent(0))) {
-        i = i_offset;
+      if (STDPAR_IS_DEVICE_CODE) {
+        #if STDPAR_INCLUDE_DEVICE_CODE
+            const int i_offset =
+                (threadIdx.x * blockDim.y + threadIdx.y) * blockDim.z + threadIdx.z;
+            int i = (((blockIdx.x * gridDim.y + blockIdx.y) * gridDim.z + blockIdx.z) *
+                         blockDim.x * blockDim.y * blockDim.z +
+                     i_offset) %
+                    locks_.extent(0);
+            while (Kokkos::atomic_compare_exchange(&locks_(i), 0, 1)) {
+              i += blockDim.x * blockDim.y * blockDim.z;
+              if (i >= static_cast<int>(locks_.extent(0))) {
+                i = i_offset;
+              }
+            }
+            return i;
+        #endif
+        return 0;
       }
-    }
-    return i;
-#else
-    (void)locks_;
-    return 0;
-#endif
+      else {
+        #if STDPAR_INCLUDE_HOST_CODE
+        (void)locks_;
+        return 0;
+        #endif
+        return 0;
+      }
   }
 };
 #endif

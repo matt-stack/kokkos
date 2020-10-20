@@ -106,8 +106,8 @@ namespace Impl {
 namespace {
 
 __global__ void query_cuda_kernel_arch(int *d_arch) {
-#if defined(__CUDA_ARCH__)
-  *d_arch = __CUDA_ARCH__;
+#if (STDPAR_INCLUDE_DEVICE_CODE)
+  *d_arch = STDPAR_CUDA_ARCH;
 #else
   *d_arch = 0;
 #endif

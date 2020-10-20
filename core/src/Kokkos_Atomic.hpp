@@ -319,7 +319,7 @@ extern KOKKOS_INLINE_FUNCTION void unlock_address_rocm_space(void* ptr);
 // This atomic-style macro should be an inlined function, not a macro
 
 #if defined(KOKKOS_COMPILER_GNU) && !defined(__PGIC__) && \
-    !defined(__CUDA_ARCH__)
+    (STDPAR_INCLUDE_HOST_CODE)
 
 #define KOKKOS_NONTEMPORAL_PREFETCH_LOAD(addr) __builtin_prefetch(addr, 0, 0)
 #define KOKKOS_NONTEMPORAL_PREFETCH_STORE(addr) __builtin_prefetch(addr, 1, 0)

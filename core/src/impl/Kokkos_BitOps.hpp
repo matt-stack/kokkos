@@ -58,7 +58,7 @@ namespace Kokkos {
 KOKKOS_FORCEINLINE_FUNCTION
 int log2(unsigned i) {
   enum : int { shift = sizeof(unsigned) * CHAR_BIT - 1 };
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
   return shift - __clz(i);
 #elif defined(KOKKOS_COMPILER_INTEL)
   return _bit_scan_reverse(i);
@@ -88,7 +88,7 @@ KOKKOS_FORCEINLINE_FUNCTION
 int bit_first_zero(unsigned i) noexcept {
   enum : unsigned { full = ~0u };
 
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
   return full != i ? __ffs(~i) - 1 : -1;
 #elif defined(KOKKOS_COMPILER_INTEL)
   return full != i ? _bit_scan_forward(~i) : -1;
@@ -110,7 +110,7 @@ int bit_first_zero(unsigned i) noexcept {
 
 KOKKOS_FORCEINLINE_FUNCTION
 int bit_scan_forward(unsigned i) {
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
   return __ffs(i) - 1;
 #elif defined(KOKKOS_COMPILER_INTEL)
   return _bit_scan_forward(i);
@@ -133,7 +133,7 @@ int bit_scan_forward(unsigned i) {
 /// Count the number of bits set.
 KOKKOS_FORCEINLINE_FUNCTION
 int bit_count(unsigned i) {
-#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
   return __popc(i);
 #elif defined(__INTEL_COMPILER)
   return _popcnt32(i);

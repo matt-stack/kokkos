@@ -69,12 +69,16 @@ struct CudaTextureFetch {
   // Deference operator pulls through texture object and returns by value
   template <typename iType>
   KOKKOS_INLINE_FUNCTION ValueType operator[](const iType& i) const {
-#if defined(__CUDA_ARCH__) && (300 <= __CUDA_ARCH__)
-    AliasType v = tex1Dfetch<AliasType>(m_obj, i + m_offset);
-    return *(reinterpret_cast<ValueType*>(&v));
-#else
+  if (STDPAR_IS_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE && STDPAR_CUDA_ARCH >= 300
+      AliasType v = tex1Dfetch<AliasType>(m_obj, i + m_offset);
+      return *(reinterpret_cast<ValueType*>(&v));
+    #endif
     return m_ptr[i];
-#endif
+  }
+  else {
+    return m_ptr[i];
+  }
   }
 
   // Pointer to referenced memory
@@ -139,12 +143,15 @@ struct CudaLDGFetch {
 
   template <typename iType>
   KOKKOS_INLINE_FUNCTION ValueType operator[](const iType& i) const {
-#ifdef __CUDA_ARCH__
-    AliasType v = __ldg(reinterpret_cast<const AliasType*>(&m_ptr[i]));
-    return *(reinterpret_cast<ValueType*>(&v));
-#else
+  if (STDPAR_IS_DEVICE_CODE) {
+    #if STDPAR_INCLUDE_DEVICE_CODE
+      AliasType v = __ldg(reinterpret_cast<const AliasType*>(&m_ptr[i]));
+      return *(reinterpret_cast<ValueType*>(&v));
+    #endif
+      return m_ptr[i];
+  }
+  else
     return m_ptr[i];
-#endif
   }
 
   KOKKOS_INLINE_FUNCTION
