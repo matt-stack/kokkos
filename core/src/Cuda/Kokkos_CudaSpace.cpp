@@ -221,7 +221,8 @@ void *CudaSpace::impl_allocate(
     const Kokkos::Tools::SpaceHandle arg_handle) const {
   void *ptr = nullptr;
 
-  auto error_code = cudaMalloc(&ptr, arg_alloc_size);
+  //auto error_code = cudaMalloc(&ptr, arg_alloc_size);
+  auto error_code = cudaMallocAsync(&ptr, arg_alloc_size, 0);
   if (error_code != cudaSuccess) {  // TODO tag as unlikely branch
     cudaGetLastError();  // This is the only way to clear the last error, which
                          // we should do here since we're turning it into an
@@ -231,6 +232,7 @@ void *CudaSpace::impl_allocate(
         Experimental::RawMemoryAllocationFailure::AllocationMechanism::
             CudaMalloc);
   }
+  cudaDeviceSynchronize();
 
   if (Kokkos::Profiling::profileLibraryLoaded()) {
     const size_t reported_size =
@@ -339,7 +341,9 @@ void CudaSpace::impl_deallocate(
   }
 
   try {
-    CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
+   // CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
+    CUDA_SAFE_CALL(cudaFreeAsync(arg_alloc_ptr, 0));
+    cudaDeviceSynchronize();
   } catch (...) {
   }
 }
