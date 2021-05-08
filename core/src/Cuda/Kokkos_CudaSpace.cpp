@@ -376,9 +376,7 @@ void CudaUVMSpace::impl_deallocate(
   try {
     if (arg_alloc_ptr != nullptr) {
       Kokkos::Impl::num_uvm_allocations--;
-      //CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
-      CUDA_SAFE_CALL(cudaFreeAsync(arg_alloc_ptr, 0));
-      cudaDeviceSynchronize();
+      CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
     }
   } catch (...) {
   }
