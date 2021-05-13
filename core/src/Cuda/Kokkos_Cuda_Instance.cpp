@@ -119,9 +119,7 @@ int cuda_kernel_arch() {
   int arch    = 0;
   int *d_arch = nullptr;
 
-  //cudaMalloc((void **)&d_arch, sizeof(int));
-  cudaMallocAsync((void **)&d_arch, sizeof(int), 0);
-  cudaDeviceSynchronize();
+  cudaMalloc((void **)&d_arch, sizeof(int));
   cudaMemcpy(d_arch, &arch, sizeof(int), cudaMemcpyDefault);
 
   query_cuda_kernel_arch<<<1, 1>>>(d_arch);

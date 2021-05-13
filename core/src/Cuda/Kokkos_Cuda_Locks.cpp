@@ -84,8 +84,12 @@ void initialize_host_cuda_lock_arrays() {
   if (g_host_cuda_lock_arrays.atomic != nullptr) return;
   CUDA_SAFE_CALL(cudaMalloc(&g_host_cuda_lock_arrays.atomic,
                             sizeof(int) * (CUDA_SPACE_ATOMIC_MASK + 1)));
+//  CUDA_SAFE_CALL(cudaMallocAsync(&g_host_cuda_lock_arrays.atomic,
+//                            sizeof(int) * (CUDA_SPACE_ATOMIC_MASK + 1), 0));
   CUDA_SAFE_CALL(cudaMalloc(&g_host_cuda_lock_arrays.scratch,
                             sizeof(int) * (Cuda::concurrency())));
+//  CUDA_SAFE_CALL(cudaMallocAsync(&g_host_cuda_lock_arrays.scratch,
+//                            sizeof(int) * (Cuda::concurrency()), 0));
   CUDA_SAFE_CALL(cudaDeviceSynchronize());
   g_host_cuda_lock_arrays.n = Cuda::concurrency();
   KOKKOS_COPY_CUDA_LOCK_ARRAYS_TO_DEVICE();
@@ -99,8 +103,11 @@ void initialize_host_cuda_lock_arrays() {
 void finalize_host_cuda_lock_arrays() {
   if (g_host_cuda_lock_arrays.atomic == nullptr) return;
   cudaFree(g_host_cuda_lock_arrays.atomic);
+//  cudaFreeAsync(g_host_cuda_lock_arrays.atomic, 0);
   g_host_cuda_lock_arrays.atomic = nullptr;
   cudaFree(g_host_cuda_lock_arrays.scratch);
+//  cudaFreeAsync(g_host_cuda_lock_arrays.scratch, 0);
+//  cudaDeviceSynchronize();
   g_host_cuda_lock_arrays.scratch = nullptr;
   g_host_cuda_lock_arrays.n       = 0;
 #ifdef KOKKOS_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE
