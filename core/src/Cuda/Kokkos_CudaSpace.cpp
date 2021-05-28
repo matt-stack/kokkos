@@ -220,14 +220,21 @@ void *CudaSpace::impl_allocate(
     const size_t arg_logical_size,
     const Kokkos::Tools::SpaceHandle arg_handle) const {
   void *ptr = nullptr;
-
-  auto error_code = cudaMalloc(&ptr, arg_alloc_size);
-  if (error_code != cudaSuccess) {  // TODO tag as unlikely branch
-    cudaGetLastError();  // This is the only way to clear the last error, which
-                         // we should do here since we're turning it into an
-                         // exception here
+  if (arg_alloc_size > 0) {
+    auto error_code = cudaMalloc(&ptr, arg_alloc_size);
+    if (error_code != cudaSuccess) {  // TODO tag as unlikely branch
+      cudaGetLastError();  // This is the only way to clear the last error, which
+                           // we should do here since we're turning it into an
+                           // exception here
+      throw Experimental::CudaRawMemoryAllocationFailure(
+          arg_alloc_size, error_code,
+          Experimental::RawMemoryAllocationFailure::AllocationMechanism::
+              CudaMalloc);
+    }
+  }
+  else { 
     throw Experimental::CudaRawMemoryAllocationFailure(
-        arg_alloc_size, error_code,
+        arg_alloc_size, cudaErrorInvalidValue,
         Experimental::RawMemoryAllocationFailure::AllocationMechanism::
             CudaMalloc);
   }
@@ -297,16 +304,23 @@ void *CudaHostPinnedSpace::impl_allocate(
     const size_t arg_logical_size,
     const Kokkos::Tools::SpaceHandle arg_handle) const {
   void *ptr = nullptr;
-
-  auto error_code = cudaHostAlloc(&ptr, arg_alloc_size, cudaHostAllocDefault);
-  if (error_code != cudaSuccess) {  // TODO tag as unlikely branch
-    cudaGetLastError();  // This is the only way to clear the last error, which
-                         // we should do here since we're turning it into an
-                         // exception here
+  if (arg_alloc_size > 0) {
+    auto error_code = cudaHostAlloc(&ptr, arg_alloc_size, cudaHostAllocDefault);
+    if (error_code != cudaSuccess) {  // TODO tag as unlikely branch
+      cudaGetLastError();  // This is the only way to clear the last error, which
+                           // we should do here since we're turning it into an
+                           // exception here
+      throw Experimental::CudaRawMemoryAllocationFailure(
+          arg_alloc_size, error_code,
+          Experimental::RawMemoryAllocationFailure::AllocationMechanism::
+              CudaHostAlloc);
+    }
+  }
+  else {
     throw Experimental::CudaRawMemoryAllocationFailure(
-        arg_alloc_size, error_code,
+        arg_alloc_size, cudaErrorInvalidValue,
         Experimental::RawMemoryAllocationFailure::AllocationMechanism::
-            CudaHostAlloc);
+            CudaMalloc);
   }
   if (Kokkos::Profiling::profileLibraryLoaded()) {
     const size_t reported_size =
