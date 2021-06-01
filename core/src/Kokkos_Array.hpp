@@ -66,7 +66,16 @@ struct ArrayBoundsCheck<Integral, true> {
   KOKKOS_INLINE_FUNCTION
   ArrayBoundsCheck(Integral i, size_t N) {
     if (i < 0) {
-#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+      if target (nv::target::is_host) {
+        std::string s = "Kokkos::Array: index ";
+        s += std::to_string(i);
+        s += " < 0";
+        Kokkos::Impl::throw_runtime_exception(s);
+      } else {
+        Kokkos::abort("Kokkos::Array: negative index in device code");
+      }
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
       std::string s = "Kokkos::Array: index ";
       s += std::to_string(i);
       s += " < 0";
@@ -84,14 +93,25 @@ struct ArrayBoundsCheck<Integral, false> {
   KOKKOS_INLINE_FUNCTION
   ArrayBoundsCheck(Integral i, size_t N) {
     if (size_t(i) >= N) {
-#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+      if target(nv::target::is_host) {
+#endif
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
       std::string s = "Kokkos::Array: index ";
       s += std::to_string(i);
       s += " >= ";
       s += std::to_string(N);
       Kokkos::Impl::throw_runtime_exception(s);
-#else
+#endif
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+      } else {
+#endif
+#if !defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
       Kokkos::abort("Kokkos::Array: index >= size");
+#endif
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+      }
 #endif
     }
   }

@@ -58,7 +58,7 @@ namespace Kokkos {
 KOKKOS_FORCEINLINE_FUNCTION
 int log2(unsigned i) {
   enum : int { shift = sizeof(unsigned) * CHAR_BIT - 1 };
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   return shift - __clz(i);
 #elif defined(KOKKOS_COMPILER_INTEL)
   return _bit_scan_reverse(i);
@@ -66,7 +66,7 @@ int log2(unsigned i) {
   return shift - __cntlz4(i);
 #elif defined(KOKKOS_COMPILER_CRAYC)
   return i ? shift - _leadz32(i) : 0;
-#elif defined(__GNUC__) || defined(__GNUG__)
+#elif !defined(_NVHPC_CUDA) && (defined(__GNUC__) || defined(__GNUG__))
   return shift - __builtin_clz(i);
 #else
   int offset = 0;
@@ -88,7 +88,7 @@ KOKKOS_FORCEINLINE_FUNCTION
 int bit_first_zero(unsigned i) noexcept {
   enum : unsigned { full = ~0u };
 
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   return full != i ? __ffs(~i) - 1 : -1;
 #elif defined(KOKKOS_COMPILER_INTEL)
   return full != i ? _bit_scan_forward(~i) : -1;
@@ -96,7 +96,8 @@ int bit_first_zero(unsigned i) noexcept {
   return full != i ? __cnttz4(~i) : -1;
 #elif defined(KOKKOS_COMPILER_CRAYC)
   return full != i ? _popcnt(i ^ (i + 1)) - 1 : -1;
-#elif defined(KOKKOS_COMPILER_GNU) || defined(__GNUC__) || defined(__GNUG__)
+#elif !defined(_NVHPC_CUDA) && \
+      (defined(KOKKOS_COMPILER_GNU) || defined(__GNUC__) || defined(__GNUG__))
   return full != i ? __builtin_ffs(~i) - 1 : -1;
 #else
   int offset = -1;
@@ -110,7 +111,7 @@ int bit_first_zero(unsigned i) noexcept {
 
 KOKKOS_FORCEINLINE_FUNCTION
 int bit_scan_forward(unsigned i) {
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   return __ffs(i) - 1;
 #elif defined(KOKKOS_COMPILER_INTEL)
   return _bit_scan_forward(i);
@@ -118,7 +119,8 @@ int bit_scan_forward(unsigned i) {
   return __cnttz4(i);
 #elif defined(KOKKOS_COMPILER_CRAYC)
   return i ? _popcnt(~i & (i - 1)) : -1;
-#elif defined(KOKKOS_COMPILER_GNU) || defined(__GNUC__) || defined(__GNUG__)
+#elif !defined(_NVHPC_CUDA) && \
+      (defined(KOKKOS_COMPILER_GNU) || defined(__GNUC__) || defined(__GNUG__))
   return __builtin_ffs(i) - 1;
 #else
   int offset = -1;
@@ -133,7 +135,7 @@ int bit_scan_forward(unsigned i) {
 /// Count the number of bits set.
 KOKKOS_FORCEINLINE_FUNCTION
 int bit_count(unsigned i) {
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
   return __popc(i);
 #elif defined(__INTEL_COMPILER)
   return _popcnt32(i);
@@ -141,7 +143,7 @@ int bit_count(unsigned i) {
   return __popcnt4(i);
 #elif defined(KOKKOS_COMPILER_CRAYC)
   return _popcnt(i);
-#elif defined(__GNUC__) || defined(__GNUG__)
+#elif !defined(_NVHPC_CUDA) && (defined(__GNUC__) || defined(__GNUG__))
   return __builtin_popcount(i);
 #else
   // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetNaive

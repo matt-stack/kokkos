@@ -161,6 +161,7 @@ void runtime_check_rank_host(const size_t rank_dynamic, const size_t rank,
 KOKKOS_INLINE_FUNCTION
 void runtime_check_rank_device(const size_t rank_dynamic, const size_t rank,
                                const index_list_type minIndices) {
+#if !defined(_NVHPC_CUDA) // Workaround nvc++ device code gen bug, FS#30055 
   if (rank_dynamic != rank) {
     Kokkos::abort(
         "The full rank of an OffsetView must be the same as the dynamic rank.");
@@ -174,6 +175,7 @@ void runtime_check_rank_device(const size_t rank_dynamic, const size_t rank,
         "The number of offsets provided to an OffsetView constructor must "
         "equal the dynamic rank.");
   }
+#endif
 }
 }  // namespace Impl
 

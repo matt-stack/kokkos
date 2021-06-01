@@ -51,7 +51,13 @@ namespace Kokkos {
 
 KOKKOS_FORCEINLINE_FUNCTION
 void memory_fence() {
-#if (STDPAR_INCLUDE_DEVICE_CODE)
+#if _NVHPC_CUDA
+  if target (nv::target::is_device) {
+    __threadfence();
+  } else {
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
+  }
+#elif defined(__CUDA_ARCH__)
   __threadfence();
 #elif defined(KOKKOS_ENABLE_OPENMPTARGET)
 #pragma omp flush

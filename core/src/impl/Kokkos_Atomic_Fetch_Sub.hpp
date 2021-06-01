@@ -58,8 +58,168 @@ namespace Kokkos {
 
 //----------------------------------------------------------------------------
 
+#if defined(_NVHPC_CUDA)
+
+inline __host__ __device__ int atomic_fetch_sub(volatile int* const dest,
+                                                const int val) {
+  return __atomic_fetch_sub(dest, val, 5);
+}
+
+inline __host__ __device__ unsigned int atomic_fetch_sub(
+    volatile unsigned int* const dest, const unsigned int val) {
+  return __atomic_fetch_sub(dest, val, 5);
+}
+
+inline __host__ __device__ long int atomic_fetch_sub(
+    volatile long int* const dest, const long int val) {
+  return __atomic_fetch_sub(dest, val, 5);
+}
+
+inline __host__ __device__ unsigned long int atomic_fetch_sub(
+    volatile unsigned long int* const dest, const unsigned long int val) {
+  return __atomic_fetch_sub(dest, val, 5);
+}
+
+inline __host__ __device__ long long int atomic_fetch_sub(
+    volatile long long int* const dest, const long long int val) {
+  return __atomic_fetch_sub(dest, val, 5);
+}
+
+inline __host__ __device__ unsigned long long int atomic_fetch_sub(
+    volatile unsigned long long int* const dest,
+    const unsigned long long int val) {
+  return __atomic_fetch_sub(dest, val, 5);
+}
+
+template <typename T>
+inline T _atomic_fetch_sub_4(volatile T* const dest, const T val) {
+  union U {
+    int i;
+    T t;
+    U() { }
+  } assume, newval;
+  assume.t = *dest;
+  do {
+    newval.t = assume.t - val;
+  } while (!__atomic_compare_exchange_n((int*)dest, &assume.i, newval.i, false,
+                                        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+  return assume.t;
+}
+
+template <typename T>
+inline T _atomic_fetch_sub_8(volatile T* const dest, const T val) {
+  union U {
+    long long int i;
+    T t;
+    U() { }
+  } assume, newval;
+  assume.t = *dest;
+  do {
+    newval.t = assume.t - val;
+  } while (!__atomic_compare_exchange_n((long long int*)dest, &assume.i,
+                                        newval.i, false, __ATOMIC_SEQ_CST,
+                                        __ATOMIC_SEQ_CST));
+  return assume.t;
+}
+
+inline __host__ __device__ float atomic_fetch_sub(volatile float* const dest,
+                                                  const float val) {
+  if target (nv::target::is_host) {
+    return _atomic_fetch_sub_4(dest, val);
+  } else {
+    return atomicAdd((float*)dest, -val);
+  }
+}
+
+inline __host__ __device__ double atomic_fetch_sub(volatile double* const dest,
+                                                   const double val) {
+  if target (nv::target::is_host) {
+    return _atomic_fetch_sub_8(dest, val);
+  } else {
+    return atomicAdd((double*)dest, -val);
+  }
+}
+
+template <typename T>
+inline T atomic_fetch_sub(
+    volatile T* const dest,
+    typename std::enable_if<sizeof(T) == 4, const T>::type val) {
+  return _atomic_fetch_sub_4(dest, val);
+}
+
+template <typename T>
+inline T atomic_fetch_sub(
+    volatile T* const dest,
+    typename std::enable_if<sizeof(T) == 8, const T>::type val) {
+  return _atomic_fetch_add_8(dest, val);
+}
+
+template <typename T>
+inline __device__ T _atomic_fetch_sub_device_generic(volatile T* const dest,
+                                                     const T val) {
+  T return_val;
+  // This is a way to (hopefully) avoid deadlock in a warp.
+  int done = 0;
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+  unsigned int mask   = KOKKOS_IMPL_CUDA_ACTIVEMASK;
+  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
+#else
+  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#endif
+  unsigned int done_active = 0;
+  while (active != done_active) {
+    if (!done) {
+      bool locked = Impl::lock_address_cuda_space((void*)dest);
+      if (locked) {
+        Kokkos::memory_fence();
+        return_val = *dest;
+        *dest      = return_val - val;
+        Kokkos::memory_fence();
+        Impl::unlock_address_cuda_space((void*)dest);
+        done = 1;
+      }
+    }
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+    done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
+#else
+    done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
+#endif
+  }
+  return return_val;
+}
+
+template <typename T>
+inline __host__ T _atomic_fetch_sub_host_generic(volatile T* const dest,
+                                                 const T val) {
+  while (!Impl::lock_address_host_space((void*)dest))
+    ;
+  Kokkos::memory_fence();
+  T return_val = *dest;
+  *dest        = return_val - val;
+  const T tmp  = *dest;
+  (void)tmp;
+  Kokkos::memory_fence();
+  Impl::unlock_address_host_space((void*)dest);
+
+  return return_val;
+}
+
+template <typename T>
+inline T atomic_fetch_sub(
+    volatile T* const dest,
+    typename std::enable_if<sizeof(T) != 4 && sizeof(T) != 8,
+                            const T>::type val) {
+  if target (nv::target::is_host) {
+    return _atomic_fetch_sub_host_generic(dest, val);
+  } else {
+    return _atomic_fetch_sub_device_generic(dest, val);
+  }
+}
+
+#else
+
 #if defined(KOKKOS_ENABLE_CUDA)
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 // Support for int, unsigned int, unsigned long long int, and float
 
@@ -83,7 +243,7 @@ __inline__ __device__ unsigned int atomic_fetch_sub(volatile float* const dest,
   return atomicAdd((float*)dest, -val);
 }
 
-#if (600 <= STDPAR_CUDA_ARCH)
+#if (600 <= __CUDA_ARCH__)
 __inline__ __device__ unsigned int atomic_fetch_sub(volatile double* const dest,
                                                     const double val) {
   return atomicAdd((double*)dest, -val);
@@ -174,7 +334,7 @@ atomic_fetch_sub(volatile T* const dest,
 #endif
 //----------------------------------------------------------------------------
 #if !defined(KOKKOS_ENABLE_ROCM_ATOMICS) || !defined(KOKKOS_ENABLE_HIP_ATOMICS)
-#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 inline int atomic_fetch_sub(volatile int* const dest, const int val) {
@@ -314,13 +474,15 @@ T atomic_fetch_sub(volatile T* const dest_v, const T val) {
 #endif  // !defined ROCM_ATOMICS
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC
-#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(KOKKOS_ENABLE_CUDA)
+#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
 template <typename T>
 __inline__ __device__ T atomic_fetch_sub(volatile T* const,
                                          Kokkos::Impl::identity_t<T>) {
   return T();
 }
 #endif
+
+#endif // !defined(_NVHPC_CUDA)
 
 }  // namespace Kokkos
 

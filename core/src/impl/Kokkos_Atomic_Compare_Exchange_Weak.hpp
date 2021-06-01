@@ -57,15 +57,29 @@
 
 namespace Kokkos {
 
+#if defined(_NVHPC_CUDA)
+
+#error This does not appear to be used anywhere
+
+template <clsas T>
+bool atomic_compare_exchange_weak(
+    volatile T* const dest, T* const expected, T const desired,
+    std::memory_order success_order = std::memory_order_seq_cst,
+    std::memory_order failure_order = std::memory_order_seq_cst) {
+  return false;
+}
+
+#else
+
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 // Cuda sm_70 or greater supports C++-like semantics directly
 
 #if defined(KOKKOS_ENABLE_CUDA)
 
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
-#if STDPAR_CUDA_ARCH >= 700
+#if __CUDA_ARCH__ >= 700
 // See: https://github.com/ogiroux/freestanding
 #define kokkos_cuda_internal_cas_release_32(ptr, old, expected, desired) \
   asm volatile("atom.cas.release.sys.b32 %0, [%1], %2, %3;"              \
@@ -111,7 +125,7 @@ __inline__ __device__ bool atomic_compare_exchange_weak(
   memcpy(&tmp, &desired, sizeof(T));
   memcpy(&old, expected, sizeof(T));
   int32_t old_tmp = old;
-#if STDPAR_CUDA_ARCH >= 700
+#if __CUDA_ARCH__ >= 700
   switch (success_order) {
     case std::memory_order_seq_cst:
       // sequentially consistent is just an acquire with a seq_cst fence
@@ -148,7 +162,7 @@ __inline__ __device__ bool atomic_compare_exchange_weak(
   atomicCAS((T*)dest, old_tmp, tmp);
 #endif
   bool const rv = (old == old_tmp);
-#if STDPAR_CUDA_ARCH < 700
+#if __CUDA_ARCH__ < 700
   if (rv) {
     if (success_order == std::memory_order_acquire ||
         success_order == std::memory_order_consume ||
@@ -184,7 +198,7 @@ bool atomic_compare_exchange_weak(
   memcpy(&tmp, &desired, sizeof(T));
   memcpy(&old, expected, sizeof(T));
   int64_t old_tmp = old;
-#if STDPAR__CUDA_ARCH >= 700
+#if __CUDA_ARCH__ >= 700
   switch (success_order) {
     case std::memory_order_seq_cst:
       // sequentially consistent is just an acquire with a seq_cst fence
@@ -217,7 +231,7 @@ bool atomic_compare_exchange_weak(
   return rv;
 }
 
-#endif  // defined(STDPAR__CUDA_ARCH) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#endif  // defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 #endif  // defined( KOKKOS_ENABLE_CUDA )
 
@@ -227,7 +241,7 @@ bool atomic_compare_exchange_weak(
 // GCC native CAS supports int, long, unsigned int, unsigned long.
 // Intel native CAS support int and long with the same interface as GCC.
 #if !defined(KOKKOS_ENABLE_ROCM_ATOMICS) || !defined(KOKKOS_ENABLE_HIP_ATOMICS)
-#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 inline int atomic_compare_exchange(volatile int* const dest, const int compare,
@@ -402,6 +416,8 @@ KOKKOS_INLINE_FUNCTION bool atomic_compare_exchange_strong(
   return compare == atomic_compare_exchange(dest, compare, val);
 }
 //----------------------------------------------------------------------------
+
+#endif // !defined(_NVHPC_CUDA)
 
 }  // namespace Kokkos
 

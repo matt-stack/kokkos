@@ -1,6 +1,6 @@
 #include <Kokkos_Macros.hpp>
 
-#if (STDPAR_INCLUDE_DEVICE_CODE)
+#if defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA)
 #define KOKKOS_IMPL_CUDA_ACTIVEMASK __activemask()
 #define KOKKOS_IMPL_CUDA_SYNCWARP __syncwarp(0xffffffff)
 #define KOKKOS_IMPL_CUDA_SYNCWARP_MASK(m) __syncwarp(m)
@@ -32,7 +32,7 @@
 #define KOKKOS_IMPL_CUDA_MAX_SHFL_SIZEOF sizeof(int)
 #endif
 
-#if (STDPAR_INCLUDE_DEVICE_CODE)
+#if defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA)
 #define KOKKOS_IMPL_CUDA_SYNCWARP_OR_RETURN(MSG)                           \
   {                                                                        \
     __syncwarp();                                                          \

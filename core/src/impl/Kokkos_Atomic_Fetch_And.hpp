@@ -54,8 +54,44 @@ namespace Kokkos {
 
 //----------------------------------------------------------------------------
 
+#if defined(_NVHPC_CUDA)
+
+inline __host__ __device__ int atomic_fetch_and(
+    volatile int* const dest, const int val) {
+  return __atomic_fetch_and(dest, val, 5);
+}
+
+inline __host__ __device__ unsigned int atomic_fetch_and(
+    volatile unsigned int* const dest, const unsigned int val) {
+  return __atomic_fetch_and(dest, val, 5);
+}
+
+inline __host__ __device__ long int atomic_fetch_and(
+    volatile long int* const dest, const long int val) {
+  return __atomic_fetch_and(dest, val, 5);
+}
+
+inline __host__ __device__ unsigned long int atomic_fetch_and(
+    volatile unsigned long int* const dest, const unsigned long int val) {
+  return __atomic_fetch_and(dest, val, 5);
+}
+
+inline __host__ __device__ long long int atomic_fetch_and(
+    volatile long long int* const dest, const long long int val) {
+  return __atomic_fetch_and(dest, val, 5);
+}
+
+inline __host__ __device__ unsigned long long int atomic_fetch_and(
+    volatile unsigned long long int* const dest,
+    const unsigned long long int val) {
+  return __atomic_fetch_and(dest, val, 5);
+}
+    
+
+#else
+
 #if defined(KOKKOS_ENABLE_CUDA)
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 // Support for int, unsigned int, unsigned long long int, and float
 
@@ -69,7 +105,7 @@ __inline__ __device__ unsigned int atomic_fetch_and(
   return atomicAnd((unsigned int*)dest, val);
 }
 
-#if (STDPAR_INCLUDE_DEVICE_CODE__) && (350 <= STDPAR_CUDA_ARCH)
+#if defined(__CUDA_ARCH__) && (350 <= __CUDA_ARCH__)
 __inline__ __device__ unsigned long long int atomic_fetch_and(
     volatile unsigned long long int* const dest,
     const unsigned long long int val) {
@@ -79,7 +115,7 @@ __inline__ __device__ unsigned long long int atomic_fetch_and(
 #endif
 #endif
 //----------------------------------------------------------------------------
-#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 inline int atomic_fetch_and(volatile int* const dest, const int val) {
@@ -147,7 +183,7 @@ T atomic_fetch_and(volatile T* const dest_v, const T val) {
 //----------------------------------------------------------------------------
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC
-#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(KOKKOS_ENABLE_CUDA)
+#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
 template <typename T>
 __inline__ __device__ T atomic_fetch_and(volatile T* const,
                                          Kokkos::Impl::identity_t<T>) {
@@ -160,6 +196,8 @@ template <typename T>
 KOKKOS_INLINE_FUNCTION void atomic_and(volatile T* const dest, const T src) {
   (void)atomic_fetch_and(dest, src);
 }
+
+#endif // !defined(_NVHPC_CUDA)
 
 }  // namespace Kokkos
 

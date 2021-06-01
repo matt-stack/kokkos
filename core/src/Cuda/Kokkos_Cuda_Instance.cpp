@@ -106,10 +106,18 @@ namespace Impl {
 namespace {
 
 __global__ void query_cuda_kernel_arch(int *d_arch) {
-#if (STDPAR_INCLUDE_DEVICE_CODE)
-  *d_arch = STDPAR_CUDA_ARCH;
+#ifdef __NVCOMPILER_CUDA__
+  if target (nv::target::is_device) {
+    *d_arch = __builtin_current_device_sm() * 10;
+  } else {
+    *d_arch = 0;
+  }
+#else
+#if defined(__CUDA_ARCH__)
+  *d_arch = __CUDA_ARCH__;
 #else
   *d_arch = 0;
+#endif
 #endif
 }
 
@@ -816,7 +824,10 @@ KOKKOS_FUNCTION Cuda::Cuda(Cuda &&other) noexcept {
 KOKKOS_FUNCTION Cuda::Cuda(const Cuda &other)
     : m_space_instance(other.m_space_instance), m_counter(other.m_counter) {
 #ifndef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA
-  if (m_counter) Kokkos::atomic_add(m_counter, 1);
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+  if target (nv::target::is_host)
+#endif
+  { if (m_counter) Kokkos::atomic_add(m_counter, 1); }
 #endif
 }
 
@@ -832,19 +843,27 @@ KOKKOS_FUNCTION Cuda &Cuda::operator=(const Cuda &other) {
   m_space_instance = other.m_space_instance;
   m_counter        = other.m_counter;
 #ifndef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA
-  if (m_counter) Kokkos::atomic_add(m_counter, 1);
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+  if target (nv::target::is_host)
+#endif
+  { if (m_counter) Kokkos::atomic_add(m_counter, 1); }
 #endif
   return *this;
 }
 
 KOKKOS_FUNCTION Cuda::~Cuda() noexcept {
 #ifndef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA
-  if (m_counter == nullptr) return;
-  int const count = Kokkos::atomic_fetch_sub(m_counter, 1);
-  if (count == 1) {
-    delete m_counter;
-    m_space_instance->finalize();
-    delete m_space_instance;
+#ifdef KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC
+  if target (nv::target::is_host)
+#endif
+  {
+    if (m_counter == nullptr) return;
+    int const count = Kokkos::atomic_fetch_sub(m_counter, 1);
+    if (count == 1) {
+      delete m_counter;
+      m_space_instance->finalize();
+      delete m_space_instance;
+    }
   }
 #endif
 }

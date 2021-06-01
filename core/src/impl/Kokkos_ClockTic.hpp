@@ -70,7 +70,12 @@ namespace Impl {
 
 KOKKOS_FORCEINLINE_FUNCTION
 uint64_t clock_tic(void) noexcept {
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(__HIP_DEVICE_COMPILE__)
+#if defined(_NVHPC_CUDA)
+  if target (nv::target::is_device) {
+    return clock64();
+  }
+#endif
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 
   // Return value of 64-bit hi-res clock register.
 

@@ -69,16 +69,12 @@ struct CudaTextureFetch {
   // Deference operator pulls through texture object and returns by value
   template <typename iType>
   KOKKOS_INLINE_FUNCTION ValueType operator[](const iType& i) const {
-  if (STDPAR_IS_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE && STDPAR_CUDA_ARCH >= 300
+    NV_IF_TARGET(NV_IS_DEVICE, (
       AliasType v = tex1Dfetch<AliasType>(m_obj, i + m_offset);
       return *(reinterpret_cast<ValueType*>(&v));
-    #endif
-    return m_ptr[i];
-  }
-  else {
-    return m_ptr[i];
-  }
+    ), (
+      return m_ptr[i];
+    ))
   }
 
   // Pointer to referenced memory
@@ -143,15 +139,12 @@ struct CudaLDGFetch {
 
   template <typename iType>
   KOKKOS_INLINE_FUNCTION ValueType operator[](const iType& i) const {
-  if (STDPAR_IS_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE
+    NV_IF_TARGET(NV_IS_DEVICE, (
       AliasType v = __ldg(reinterpret_cast<const AliasType*>(&m_ptr[i]));
       return *(reinterpret_cast<ValueType*>(&v));
-    #endif
+    ), (
       return m_ptr[i];
-  }
-  else
-    return m_ptr[i];
+    ))
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -259,7 +252,8 @@ class ViewDataHandle<
                             track_type const& arg_tracker) {
     if (arg_data_ptr == nullptr) return handle_type();
 
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
     // Assignment of texture = non-texture requires creation of a texture object
     // which can only occur on the host.  In addition, 'get_record' is only
     // valid if called in a host execution space
@@ -281,8 +275,8 @@ class ViewDataHandle<
 
 #else
     (void)arg_tracker;
-    Kokkos::Impl::cuda_abort(
-        "Cannot create Cuda texture object from within a Cuda kernel");
+//    Kokkos::Impl::cuda_abort(
+//        "Cannot create Cuda texture object from within a Cuda kernel");
     return handle_type();
 #endif
   }

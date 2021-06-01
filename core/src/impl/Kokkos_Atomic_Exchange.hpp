@@ -56,10 +56,113 @@
 
 namespace Kokkos {
 
+#if defined(_NVHPC_CUDA)
+
+template <typename T>
+__inline__ __host__ __device__ T atomic_exchange(
+    volatile T* const dest,
+    typename std::enable_if<sizeof(T) == sizeof(int), const T&>::type val) {
+  using type = int;
+  if target (nv::target::is_device) {
+    type tmp = atomicExch((type*)dest, *(type*)&val);
+    return *(T*)&tmp;
+  } else {
+    const type v = *(type*)&val;
+    type assumed;
+    union U {
+      T val_T;
+      type val_type;
+      inline U() { }
+    } old;
+    old.val_T = *dest;
+    do {
+      assumed = old.val_type;
+      old.val_type =
+        __sync_val_compare_and_swap((volatile int*)dest, assumed, v);
+    } while (assumed != old.val_type);
+    return old.val_T;
+  }
+}
+
+template <typename T>
+__inline__ __host__ __device__ T atomic_exchange(
+    volatile T* const dest,
+    typename std::enable_if<sizeof(T) == sizeof(unsigned long long),
+                            const T&>::type val) {
+  using type = unsigned long long;
+  if target (nv::target::is_device) {
+    type tmp = atomicExch((type*)dest, *(type*)&val);
+    return *(T*)&tmp;
+  } else {
+    const type v = *(type*)&val;
+    type assumed;
+    union U {
+      T val_T;
+      type val_type;
+      inline U() { }
+    } old;
+    old.val_T = *dest;
+    do {
+      assumed = old.val_type;
+      old.val_type =
+        __sync_val_compare_and_swap((volatile int*)dest, assumed, v);
+    } while (assumed != old.val_type);
+    return old.val_T;
+  }
+}
+
+template <typename T>
+__inline__ __host__ __device__ T atomic_exchange(
+    volatile T* const dest,
+    typename std::enable_if<sizeof(T) != sizeof(unsigned long long) &&
+                            sizeof(T) != sizeof(int), const T&>::type val) {
+  if target (nv::target::is_device) {
+    T return_val;
+    int done = 0;
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+    unsigned int mask   = KOKKOS_IMPL_CUDA_ACTIVEMASK;
+    unsigned int active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
+#else
+    unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#endif
+    unsigned int done_active = 0;
+    while (active != done_active) {
+      if (!done) {
+        if (Impl::lock_address_cuda_space((void*)dest)) {
+          Kokkos::memory_fence();
+          return_val = *dest;
+          *dest      = val;
+          Kokkos::memory_fence();
+          Impl::unlock_address_cuda_space((void*)dest);
+          done = 1;
+        }
+      }
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+      done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
+#else
+      done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
+#endif
+    }
+    return return_val;
+  } else {
+    while (!Impl::lock_address_host_space((void*)dest))
+      ;
+    Kokkos::memory_fence();
+    T return_val = *dest;
+    *dest       = val;
+    const T tmp = *dest;
+    Kokkos::memory_fence();
+    Impl::unlock_address_host_space((void*)dest);
+    return return_val;
+  }
+}
+
+#else
+
 //----------------------------------------------------------------------------
 
 #if defined(KOKKOS_ENABLE_CUDA)
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 __inline__ __device__ int atomic_exchange(volatile int* const dest,
                                           const int val) {
@@ -183,7 +286,7 @@ __inline__ __device__ void atomic_assign(
 
 //----------------------------------------------------------------------------
 
-#if (STDPAR_INCLUDE_HOST_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
 template <typename T>
@@ -401,7 +504,7 @@ inline void atomic_assign(volatile T* const dest_v, const T val) {
 #endif
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC
-#if (STDPAR_INCLUDE_DEVICE_CODE) && !defined(KOKKOS_ENABLE_CUDA)
+#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
 template <typename T>
 __inline__ __device__ T atomic_exchange(volatile T* const,
                                         const Kokkos::Impl::identity_t<T>) {
@@ -412,6 +515,8 @@ template <typename T>
 __inline__ __device__ void atomic_assign(volatile T* const,
                                          const Kokkos::Impl::identity_t<T>) {}
 #endif
+
+#endif // !defined(_NVHPC_CUDA)
 
 }  // namespace Kokkos
 

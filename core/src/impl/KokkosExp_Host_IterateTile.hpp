@@ -47,7 +47,7 @@
 
 #include <Kokkos_Macros.hpp>
 #if defined(KOKKOS_ENABLE_AGGRESSIVE_VECTORIZATION) && \
-    defined(KOKKOS_ENABLE_PRAGMA_IVDEP) && (STDPAR_INCLUDE_HOST_CODE)
+    defined(KOKKOS_ENABLE_PRAGMA_IVDEP) && !defined(__CUDA_ARCH__)
 #define KOKKOS_MDRANGE_IVDEP
 #endif
 

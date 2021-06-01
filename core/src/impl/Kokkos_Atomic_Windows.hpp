@@ -73,7 +73,7 @@ __attribute__((aligned(16)))
 ;
 }  // namespace Impl
 
-#if STDPAR_INCLUDE_HOST_CODE
+#ifndef __CUDA_ARCH__
 template <typename T>
 inline T atomic_compare_exchange(
     volatile T* const dest, const T& compare,
