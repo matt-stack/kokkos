@@ -48,7 +48,7 @@
 #include <Kokkos_Macros.hpp>
 #if defined(KOKKOS_ENABLE_OPENMP)
 
-#if !defined(_OPENMP) && (STDPAR_INCLUDE_HOST_CODE)
+#if !defined(_OPENMP) && !defined(__CUDA_ARCH__)
 #error \
     "You enabled Kokkos OpenMP support without enabling OpenMP in the compiler!"
 #endif

@@ -51,7 +51,7 @@ namespace Kokkos {
 //----------------------------------------------------------------------------
 
 #if defined(KOKKOS_ENABLE_CUDA)
-#if (STDPAR_INCLUDE_DEVICE_CODE) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
+#if defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 
 // Support for int, unsigned int, unsigned long long int, and float
 

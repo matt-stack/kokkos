@@ -284,7 +284,8 @@ class SharedAllocationRecord
   KOKKOS_INLINE_FUNCTION static SharedAllocationRecord* allocate(
       const MemorySpace& arg_space, const std::string& arg_label,
       const size_t arg_alloc) {
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
     return new SharedAllocationRecord(arg_space, arg_label, arg_alloc);
 #else
     (void)arg_space;
@@ -391,7 +392,8 @@ union SharedAllocationTracker {
 
   KOKKOS_INLINE_FUNCTION
   int use_count() const {
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
     Record* const tmp =
         reinterpret_cast<Record*>(m_record_bits & ~DO_NOT_DEREF_FLAG);
     return (tmp ? tmp->use_count() : 0);

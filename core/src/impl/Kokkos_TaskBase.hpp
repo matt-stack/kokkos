@@ -311,7 +311,11 @@ class Task : public TaskBase, public FunctorType {
     // If team then only one thread calls destructor.
 
     const bool only_one_thread =
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+        __builtin_is_device_code() ?
+          0 == threadIdx.x && 0 == threadIdx.y :
+          0 == member->team_rank();
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA)
         0 == threadIdx.x && 0 == threadIdx.y;
 #else
         0 == member->team_rank();

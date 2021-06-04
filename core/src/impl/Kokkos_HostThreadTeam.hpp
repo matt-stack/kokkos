@@ -498,7 +498,8 @@ class HostThreadTeamMember {
   //--------------------------------------------------------------------------
 
   KOKKOS_INLINE_FUNCTION void team_barrier() const noexcept
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
   {
     if (m_data.team_rendezvous()) {
       m_data.team_rendezvous_release();
@@ -515,7 +516,8 @@ class HostThreadTeamMember {
   KOKKOS_INLINE_FUNCTION void team_broadcast(T& value,
                                              const int source_team_rank) const
       noexcept
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
   {
     if (1 < m_data.m_team_size) {
       T volatile* const shared_value = (T*)m_data.team_reduce();
@@ -551,7 +553,8 @@ class HostThreadTeamMember {
   KOKKOS_INLINE_FUNCTION void team_broadcast(Closure const& f, T& value,
                                              const int source_team_rank) const
       noexcept
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
   {
     T volatile* const shared_value = (T*)m_data.team_reduce();
 
@@ -601,7 +604,8 @@ class HostThreadTeamMember {
       typename std::enable_if<is_reducer<ReducerType>::value>::type
       team_reduce(ReducerType const& reducer,
                   typename ReducerType::value_type contribution) const noexcept
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
   {
     if (1 < m_data.m_team_size) {
       using value_type = typename ReducerType::value_type;
@@ -659,7 +663,8 @@ class HostThreadTeamMember {
   ValueType
   team_reduce( ValueType const & value
              , JoinOp    const & join ) const noexcept
-#if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
+#if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST ) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
     {
       if ( 0 != m_data.m_team_rank ) {
         // Non-root copies to their local buffer:
@@ -703,7 +708,8 @@ class HostThreadTeamMember {
   template <typename T>
   KOKKOS_INLINE_FUNCTION T team_scan(T const& value,
                                      T* const global = nullptr) const noexcept
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+    defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
   {
     if (0 != m_data.m_team_rank) {
       // Non-root copies to their local buffer:

@@ -59,11 +59,15 @@ namespace Impl {
 
 // Olivier's implementation helpfully binds to the same builtins as GNU, so
 // we make this code common across multiple options
-#if (defined(KOKKOS_ENABLE_GNU_ATOMICS) && (STDPAR_INCLUDE_HOST_CODE)) ||   \
-    (defined(KOKKOS_ENABLE_INTEL_ATOMICS) && (STDPAR_INCLUDE_HOST_CODE)) || \
-    defined(KOKKOS_ENABLE_CUDA_ASM_ATOMICS)
+#if (defined(KOKKOS_ENABLE_GNU_ATOMICS) && !defined(__CUDA_ARCH__)) ||   \
+    (defined(KOKKOS_ENABLE_INTEL_ATOMICS) && !defined(__CUDA_ARCH__)) || \
+    defined(KOKKOS_ENABLE_CUDA_ASM_ATOMICS) || \
+    defined(_NVHPC_CUDA)
 
-#if (STDPAR_INCLUDE_DEVICE_CODE) && defined(KOKKOS_ENABLE_CUDA_ASM_ATOMICS)
+#undef KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH
+#if defined(_NVHPC_CUDA)
+#define KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH __host__ __device__ inline
+#elif defined(__CUDA_ARCH__) && defined(KOKKOS_ENABLE_CUDA_ASM_ATOMICS)
 #define KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH __inline__ __device__
 #else
 #define KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH inline
@@ -98,7 +102,7 @@ KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH T _atomic_load(
 
 #undef KOKKOS_INTERNAL_INLINE_DEVICE_IF_CUDA_ARCH
 
-#elif (STDPAR_INCLUDE_DEVICE_CODE)
+#elif defined(__CUDA_ARCH__)
 
 // Not compiling for Volta or later, or Cuda ASM atomics were manually disabled
 

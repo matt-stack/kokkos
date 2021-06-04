@@ -232,6 +232,9 @@ using ActiveExecutionMemorySpace = Kokkos::CudaSpace;
 using ActiveExecutionMemorySpace = Kokkos::HostSpace;
 #elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HIP_GPU)
 using ActiveExecutionMemorySpace = Kokkos::Experimental::HIPSpace;
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+// TODO This really can't be a compile-time value with NVC++
+using ActiveExecutionMemorySpace = Kokkos::HostSpace;
 #elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
 using ActiveExecutionMemorySpace = Kokkos::HostSpace;
 #else

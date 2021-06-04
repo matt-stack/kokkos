@@ -598,44 +598,81 @@ class TaskExec<Kokkos::Cuda, Scheduler> {
  public:
   using thread_team_member = TaskExec;
 
-  if (STDPAR_INCLUDE_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE
-      __device__ int team_rank() const { return threadIdx.y; }
-      __device__ int team_size() const { return m_team_size; }
-      //__device__ int league_rank() const { return threadIdx.z; }
-      __device__ int league_rank() const {
-        return blockIdx.x * blockDim.z + threadIdx.z;
-      }
-      __device__ int league_size() const { return blockDim.z * gridDim.x; }
-
-      __device__ void team_barrier() const {
-        if (1 < m_team_size) {
-          KOKKOS_IMPL_CUDA_SYNCWARP;
-        }
-      }
-
-      template <class ValueType>
-      __device__ void team_broadcast(ValueType& val, const int thread_id) const {
-        if (1 < m_team_size) {
-          // WarpSize = blockDim.X * blockDim.y
-          // thread_id < blockDim.y
-          ValueType tmp(val);  // input might not be register variable
-          Impl::in_place_shfl(val, tmp, blockDim.x * thread_id, WarpSize);
-        }
-      }
-    #endif
+  __host__ __device__ int team_rank() const {
+    NV_IF_TARGET(NV_IS_DEVICE, ( return threadIdx.y; ), ( return 0; ))
   }
-  else {
-    #if STDPAR_INCLUDE_HOST_CODE
-      __host__ int team_rank() const { return 0; }
-      __host__ int team_size() const { return 0; }
-      __host__ int league_rank() const { return 0; }
-      __host__ int league_size() const { return 0; }
-      __host__ void team_barrier() const {}
-      template <class ValueType>
-      __host__ void team_broadcast(ValueType&, const int) const {}
-    #endif
+  __host__ __device__ int team_size() const {
+    NV_IF_TARGET(NV_IS_DEVICE, ( return m_team_size; ), ( return 0; ))
   }
+  __host__ __device__ int league_rank() const {
+    NV_IF_TARGET(NV_IS_DEVICE, (
+      return blockIdx.x * blockDim.z + threadIdx.z;
+    ), (
+      return 0;
+    ))
+  }
+  __host__ __device__ int league_size() const {
+    NV_IF_TARGET(NV_IS_DEVICE, (
+      return blockDim.z * gridDim.x;
+    ), (
+      return 0;
+    ))
+  }
+  __host__ __device__ void team_barrier() const {
+    NV_IF_TARGET(NV_IS_DEVICE, (
+      if (1 < m_team_size) {
+        KOKKOS_IMPL_CUDA_SYNCWARP;
+      }
+    ))
+  }
+  template <class ValueType>
+  __host__ __device__ void team_broadcast(ValueType& val, const int thread_id) const {
+    NV_IF_TARGET(NV_IS_DEVICE, (
+      if (1 < m_team_size) {
+        // WarpSize = blockDim.X * blockDim.y
+        // thread_id < blockDim.y
+        ValueType tmp(val);  // input might not be register variable
+        Impl::in_place_shfl(val, tmp, blockDim.x * thread_id, WarpSize);
+      }
+    ))
+  }
+
+#if 0
+#if defined(__CUDA_ARCH__)
+  __device__ int team_rank() const { return threadIdx.y; }
+  __device__ int team_size() const { return m_team_size; }
+  //__device__ int league_rank() const { return threadIdx.z; }
+  __device__ int league_rank() const {
+    return blockIdx.x * blockDim.z + threadIdx.z;
+  }
+  __device__ int league_size() const { return blockDim.z * gridDim.x; }
+
+  __device__ void team_barrier() const {
+    if (1 < m_team_size) {
+      KOKKOS_IMPL_CUDA_SYNCWARP;
+    }
+  }
+
+  template <class ValueType>
+  __device__ void team_broadcast(ValueType& val, const int thread_id) const {
+    if (1 < m_team_size) {
+      // WarpSize = blockDim.X * blockDim.y
+      // thread_id < blockDim.y
+      ValueType tmp(val);  // input might not be register variable
+      Impl::in_place_shfl(val, tmp, blockDim.x * thread_id, WarpSize);
+    }
+  }
+
+#else
+  __host__ int team_rank() const { return 0; }
+  __host__ int team_size() const { return 0; }
+  __host__ int league_rank() const { return 0; }
+  __host__ int league_size() const { return 0; }
+  __host__ void team_barrier() const {}
+  template <class ValueType>
+  __host__ void team_broadcast(ValueType&, const int) const {}
+#endif
+#endif
 
   KOKKOS_INLINE_FUNCTION Scheduler const& scheduler() const noexcept {
     return m_scheduler;
@@ -663,36 +700,31 @@ struct TeamThreadRangeBoundariesStruct<iType,
   const iType increment;
   member_type const& thread;
 
-  if (STDPAR_INCLUDE_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE
+#if defined(KOKKOS_CUDA_DEVICE_COMPILE)
+  __device__ inline TeamThreadRangeBoundariesStruct(
+      member_type const& arg_thread, const iType& arg_count)
+      : start(threadIdx.y),
+        end(arg_count),
+        increment(blockDim.y),
+        thread(arg_thread) {}
 
-      __device__ inline TeamThreadRangeBoundariesStruct(
-          member_type const& arg_thread, const iType& arg_count)
-          : start(threadIdx.y),
-            end(arg_count),
-            increment(blockDim.y),
-            thread(arg_thread) {}
+  __device__ inline TeamThreadRangeBoundariesStruct(
+      member_type const& arg_thread, const iType& arg_start,
+      const iType& arg_end)
+      : start(arg_start + threadIdx.y),
+        end(arg_end),
+        increment(blockDim.y),
+        thread(arg_thread) {}
 
-      __device__ inline TeamThreadRangeBoundariesStruct(
-          member_type const& arg_thread, const iType& arg_start,
-          const iType& arg_end)
-          : start(arg_start + threadIdx.y),
-            end(arg_end),
-            increment(blockDim.y),
-            thread(arg_thread) {}
-    #endif
-  }
-  else {
-    #if STDPAR_INCLUDE_HOST_CODE
+#else
 
-      TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
-                                      const iType& arg_count);
+  TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
+                                  const iType& arg_count);
 
-      TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
-                                      const iType& arg_start, const iType& arg_end);
+  TeamThreadRangeBoundariesStruct(member_type const& arg_thread,
+                                  const iType& arg_start, const iType& arg_end);
 
-    #endif
-  }
+#endif
 };
 
 //----------------------------------------------------------------------------
@@ -708,37 +740,32 @@ struct ThreadVectorRangeBoundariesStruct<iType,
   const index_type increment;
   const member_type& thread;
 
-  if (STDPAR_INCLUDE_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE
+#if defined(KOKKOS_CUDA_DEVICE_COMPILE)
 
-      __device__ inline ThreadVectorRangeBoundariesStruct(
-          member_type const& arg_thread, const index_type& arg_count)
-          : start(threadIdx.x),
-            end(arg_count),
-            increment(blockDim.x),
-            thread(arg_thread) {}
+  __device__ inline ThreadVectorRangeBoundariesStruct(
+      member_type const& arg_thread, const index_type& arg_count)
+      : start(threadIdx.x),
+        end(arg_count),
+        increment(blockDim.x),
+        thread(arg_thread) {}
 
-      __device__ inline ThreadVectorRangeBoundariesStruct(
-          member_type const& arg_thread, const index_type& arg_begin,
-          const index_type& arg_end)
-          : start(arg_begin + threadIdx.x),
-            end(arg_end),
-            increment(blockDim.x),
-            thread(arg_thread) {}
-    #endif
-  }
-  else {
-    #if STDPAR_INCLUDE_HOST_CODE
+  __device__ inline ThreadVectorRangeBoundariesStruct(
+      member_type const& arg_thread, const index_type& arg_begin,
+      const index_type& arg_end)
+      : start(arg_begin + threadIdx.x),
+        end(arg_end),
+        increment(blockDim.x),
+        thread(arg_thread) {}
+#else
 
-      ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
-                                        const index_type& arg_count);
+  ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
+                                    const index_type& arg_count);
 
-      ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
-                                        const index_type& arg_begin,
-                                        const index_type& arg_end);
+  ThreadVectorRangeBoundariesStruct(member_type const& arg_thread,
+                                    const index_type& arg_begin,
+                                    const index_type& arg_end);
 
-    #endif
-  }
+#endif
 };
 
 }  // namespace Impl
@@ -1174,34 +1201,28 @@ template <class FunctorType, class Scheduler>
 KOKKOS_INLINE_FUNCTION void single(
     const Impl::VectorSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>&,
     const FunctorType& lambda) {
-  if (STDPAR_INCLUDE_DEVICE_CODE)
-    #if STDPAR_INCLUDE_DEVICE_CODE
-      if (threadIdx.x == 0) lambda();
-    #endif
+  NV_IF_TARGET(NV_IS_DEVICE, ( if (threadIdx.x == 0) lambda(); ))
 }
 
 template <class FunctorType, class Scheduler>
 KOKKOS_INLINE_FUNCTION void single(
     const Impl::ThreadSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>&,
     const FunctorType& lambda) {
-  if (STDPAR_INCLUDE_DEVICE_CODE)
-    #if STDPAR_INCLUDE_DEVICE_CODE
-      if (threadIdx.x == 0 && threadIdx.y == 0) lambda();
-    #endif
+  NV_IF_TARGET(NV_IS_DEVICE, (
+    if (threadIdx.x == 0 && threadIdx.y == 0) lambda();
+  ))
 }
 
 template <class FunctorType, class ValueType, class Scheduler>
 KOKKOS_INLINE_FUNCTION void single(
     const Impl::VectorSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>& s,
     const FunctorType& lambda, ValueType& val) {
-  if (STDPAR_INCLUDE_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE
-      if (threadIdx.x == 0) lambda(val);
-      if (1 < s.team_member.team_size()) {
-        val = shfl(val, 0, blockDim.x);
-      }
-    #endif
-  }
+  NV_IF_TARGET(NV_IS_DEVICE, (
+    if (threadIdx.x == 0) lambda(val);
+    if (1 < s.team_member.team_size()) {
+      val = shfl(val, 0, blockDim.x);
+    }
+  ))
 }
 
 template <class FunctorType, class ValueType, class Scheduler>
@@ -1209,14 +1230,12 @@ KOKKOS_INLINE_FUNCTION void single(
     const Impl::ThreadSingleStruct<Impl::TaskExec<Kokkos::Cuda, Scheduler>>&
         single_struct,
     const FunctorType& lambda, ValueType& val) {
-  if (STDPAR_INCLUDE_DEVICE_CODE) {
-    #if STDPAR_INCLUDE_DEVICE_CODE
-      if (threadIdx.x == 0 && threadIdx.y == 0) {
-        lambda(val);
-      }
-      single_struct.team_member.team_broadcast(val, 0);
-    #endif
-  }
+  NV_IF_TARGET(NV_IS_DEVICE, (
+    if (threadIdx.x == 0 && threadIdx.y == 0) {
+      lambda(val);
+    }
+    single_struct.team_member.team_broadcast(val, 0);
+  ))
 }
 
 }  // namespace Kokkos

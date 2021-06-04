@@ -256,35 +256,50 @@ KOKKOS_INLINE_FUNCTION T atomic_fetch_oper(
   Kokkos::memory_fence();
   Impl::unlock_address_host_space((void*)dest);
   return return_val;
-#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA)
-  // This is a way to (hopefully) avoid dead lock in a warp
-  T return_val;
-  int done                 = 0;
-#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-  unsigned int mask        = KOKKOS_IMPL_CUDA_ACTIVEMASK;
-  unsigned int active      = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
-#else
-  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA) || \
+      defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+  if target (nv::target::is_host) {
+    while (!Impl::lock_address_host_space((void*)dest))
+      ;
+    Kokkos::memory_fence();
+    T return_val = *dest;
+    *dest        = op.apply(return_val, val);
+    Kokkos::memory_fence();
+    Impl::unlock_address_host_space((void*)dest);
+    return return_val;
+  } else
 #endif
-  unsigned int done_active = 0;
-  while (active != done_active) {
-    if (!done) {
-      if (Impl::lock_address_cuda_space((void*)dest)) {
-        Kokkos::memory_fence();
-        return_val = *dest;
-        *dest      = op.apply(return_val, val);
-        Kokkos::memory_fence();
-        Impl::unlock_address_cuda_space((void*)dest);
-        done = 1;
+  {
+    // This is a way to (hopefully) avoid dead lock in a warp
+    T return_val;
+    int done                 = 0;
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+    unsigned int mask        = KOKKOS_IMPL_CUDA_ACTIVEMASK;
+    unsigned int active      = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
+#else
+    unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#endif
+    unsigned int done_active = 0;
+    while (active != done_active) {
+      if (!done) {
+        if (Impl::lock_address_cuda_space((void*)dest)) {
+          Kokkos::memory_fence();
+          return_val = *dest;
+          *dest      = op.apply(return_val, val);
+          Kokkos::memory_fence();
+          Impl::unlock_address_cuda_space((void*)dest);
+          done = 1;
+        }
       }
-    }
 #ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-    done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
+      done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
 #else
-    done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
+      done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
 #endif
+    }
+    return return_val;
   }
-  return return_val;
 #elif defined(__HIP_DEVICE_COMPILE__)
   // FIXME_HIP
   Kokkos::abort("atomic_fetch_oper not implemented for large types.");
@@ -328,35 +343,50 @@ atomic_oper_fetch(const Oper& op, volatile T* const dest,
   Kokkos::memory_fence();
   Impl::unlock_address_host_space((void*)dest);
   return return_val;
-#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA)
-  T return_val;
-  // This is a way to (hopefully) avoid dead lock in a warp
-  int done                 = 0;
-#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-  unsigned int mask        = KOKKOS_IMPL_CUDA_ACTIVEMASK;
-  unsigned int active      = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
-#else
-  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA) || \
+      defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+  if target (nv::target::is_host) {
+    while (!Impl::lock_address_host_space((void*)dest))
+      ;
+    Kokkos::memory_fence();
+    T return_val = op.apply(*dest, val);
+    *dest        = return_val;
+    Kokkos::memory_fence();
+    Impl::unlock_address_host_space((void*)dest);
+    return return_val;
+  } else
 #endif
-  unsigned int done_active = 0;
-  while (active != done_active) {
-    if (!done) {
-      if (Impl::lock_address_cuda_space((void*)dest)) {
-        Kokkos::memory_fence();
-        return_val = op.apply(*dest, val);
-        *dest      = return_val;
-        Kokkos::memory_fence();
-        Impl::unlock_address_cuda_space((void*)dest);
-        done = 1;
+  {
+    T return_val;
+    // This is a way to (hopefully) avoid dead lock in a warp
+    int done                 = 0;
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+    unsigned int mask        = KOKKOS_IMPL_CUDA_ACTIVEMASK;
+    unsigned int active      = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
+#else
+    unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#endif
+    unsigned int done_active = 0;
+    while (active != done_active) {
+      if (!done) {
+        if (Impl::lock_address_cuda_space((void*)dest)) {
+          Kokkos::memory_fence();
+          return_val = op.apply(*dest, val);
+          *dest      = return_val;
+          Kokkos::memory_fence();
+          Impl::unlock_address_cuda_space((void*)dest);
+          done = 1;
+        }
       }
-    }
 #ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-    done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
+      done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
 #else
-    done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
+      done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
 #endif
+    }
+    return return_val;
   }
-  return return_val;
 #elif defined(__HIP_DEVICE_COMPILE__)
   // FIXME_HIP
   Kokkos::abort("atomic_oper_fetch not implemented for large types.");
