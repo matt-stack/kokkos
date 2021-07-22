@@ -91,7 +91,18 @@ struct ViewTracker {
 
   template <class RT, class... RP>
   KOKKOS_INLINE_FUNCTION void assign(const View<RT, RP...>& vt) noexcept {
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+    if target (nv::target::is_host) {
+      if (view_traits::is_managed &&
+          Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enabled()){
+        m_tracker.assign_direct(vt.m_track.m_tracker);
+      } else {
+        m_tracker.assign_force_disable(vt.m_track.m_tracker);
+      }
+    } else {
+      m_tracker.assign_force_disable(vt.m_track.m_tracker);
+    }
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
     if (view_traits::is_managed &&
         Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enabled()) {
       m_tracker.assign_direct(vt.m_track.m_tracker);
@@ -105,7 +116,18 @@ struct ViewTracker {
 
   KOKKOS_INLINE_FUNCTION
   ViewTracker& operator=(const ViewTracker& rhs) noexcept {
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+    if target (nv::target::is_host) {
+      if (view_traits::is_managed &&
+          Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enabled()){
+        m_tracker.assign_direct(rhs.m_tracker);
+      } else {
+        m_tracker.assign_force_disable(rhs.m_tracker);
+      }
+    } else {
+      m_tracker.assign_force_disable(rhs.m_tracker);
+    }
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
     if (view_traits::is_managed &&
         Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enabled()) {
       m_tracker.assign_direct(rhs.m_tracker);

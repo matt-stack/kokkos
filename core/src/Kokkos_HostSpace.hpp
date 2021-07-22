@@ -267,7 +267,13 @@ class SharedAllocationRecord<Kokkos::HostSpace, void>
   KOKKOS_INLINE_FUNCTION static SharedAllocationRecord* allocate(
       const Kokkos::HostSpace& arg_space, const std::string& arg_label,
       const size_t arg_alloc_size) {
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+    if target (nv::target::is_host) {
+      return new SharedAllocationRecord(arg_space, arg_label, arg_alloc_size);
+    } else {
+      return (SharedAllocationRecord*)0;
+    }
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
     return new SharedAllocationRecord(arg_space, arg_label, arg_alloc_size);
 #else
     (void)arg_space;
