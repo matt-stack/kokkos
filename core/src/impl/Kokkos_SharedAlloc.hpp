@@ -49,7 +49,9 @@
 #include <string>
 
 // undefined at end of file
-#if defined(KOKKOS_ENABLE_OPENMPTARGET)
+#if defined(_NVHPC_CUDA)
+#define KOKKOS_IMPL_IF_ON_HOST if target (nv::target::is_host)
+#elif defined(KOKKOS_ENABLE_OPENMPTARGET)
 #if defined(KOKKOS_COMPILER_PGI)
 #define KOKKOS_IMPL_IF_ON_HOST if (!__builtin_is_device_code())
 #else
@@ -334,17 +336,22 @@ union SharedAllocationTracker {
   if (KOKKOS_IMPL_SHARED_ALLOCATION_TRACKER_CONDITION)  \
     KOKKOS_IMPL_IF_ON_HOST Record::decrement(m_record);
 
-#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#elif defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST) || \
+      defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
 
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_NVHPC)
+#define KOKKOS_IMPL_SHARED_ALLOCATION_TRACKER_ENABLED (!__builtin_is_device_code() && Record::tracking_enabled())
+#else
 #define KOKKOS_IMPL_SHARED_ALLOCATION_TRACKER_ENABLED Record::tracking_enabled()
+#endif
 
 #define KOKKOS_IMPL_SHARED_ALLOCATION_TRACKER_INCREMENT \
   if (!(m_record_bits & DO_NOT_DEREF_FLAG))             \
-    KOKKOS_IMPL_IF_ON_HOST Record::increment(m_record);
+    KOKKOS_IMPL_IF_ON_HOST { Record::increment(m_record); }
 
 #define KOKKOS_IMPL_SHARED_ALLOCATION_TRACKER_DECREMENT \
   if (!(m_record_bits & DO_NOT_DEREF_FLAG))             \
-    KOKKOS_IMPL_IF_ON_HOST Record::decrement(m_record);
+    KOKKOS_IMPL_IF_ON_HOST { Record::decrement(m_record); }
 
 #else
 
