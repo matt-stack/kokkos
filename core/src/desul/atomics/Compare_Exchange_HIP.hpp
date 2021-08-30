@@ -152,6 +152,15 @@ atomic_exchange(T* const dest, T value, MemoryOrderAcqRel, MemoryScope) {
 }
 
 template <typename T, class MemoryScope>
+__device__ typename std::enable_if<sizeof(T) == 4 || sizeof(T) == 8, T>::type
+atomic_exchange(T* const dest, T value, MemoryOrderSeqCst, MemoryScope) {
+          atomic_thread_fence(MemoryOrderAcquire(), MemoryScope());
+            T return_val = atomic_exchange(dest, value, MemoryOrderRelaxed(), MemoryScope());
+              atomic_thread_fence(MemoryOrderRelease(), MemoryScope());
+                return reinterpret_cast<T&>(return_val);
+}
+
+template <typename T, class MemoryScope>
 __device__ typename std::enable_if<sizeof(T) == 4, T>::type atomic_compare_exchange(
     T* const dest, T compare, T value, MemoryOrderSeqCst, MemoryScope) {
   atomic_thread_fence(MemoryOrderAcquire(), MemoryScope());
@@ -179,8 +188,8 @@ DESUL_INLINE_FUNCTION __device__
   // This is a way to avoid dead lock in a warp or wave front
   T return_val;
   int done = 0;
-  unsigned int active = DESUL_IMPL_BALLOT_MASK(1);
-  unsigned int done_active = 0;
+  unsigned long long int active = DESUL_IMPL_BALLOT_MASK(1);
+  unsigned long long int done_active = 0;
   while (active != done_active) {
     if (!done) {
       if (Impl::lock_address_hip((void*)dest, scope)) {
@@ -208,8 +217,8 @@ DESUL_INLINE_FUNCTION __device__
   // This is a way to avoid dead lock in a warp or wave front
   T return_val;
   int done = 0;
-  unsigned int active = DESUL_IMPL_BALLOT_MASK(1);
-  unsigned int done_active = 0;
+  unsigned long long int active = DESUL_IMPL_BALLOT_MASK(1);
+  unsigned long long int done_active = 0;
   while (active != done_active) {
     if (!done) {
       if (Impl::lock_address_hip((void*)dest, scope)) {

@@ -42,48 +42,76 @@
 //@HEADER
 */
 
-#include <Kokkos_Core.hpp>
-#include <TestHIP_Category.hpp>
+#include <cstdio>
+#include <stdexcept>
+#include <sstream>
+#include <iostream>
 
-#include <array>
+#include <Kokkos_Core.hpp>
 
 namespace Test {
+namespace {
+struct SumFunctor {
+  KOKKOS_INLINE_FUNCTION
+  void operator()(int i, int& lsum) const { lsum += i; }
+};
 
-__global__ void offset(int* p) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < 100) {
-    p[idx] += idx;
+template <class ExecSpace>
+void check_distinctive(ExecSpace, ExecSpace) {}
+
+#ifdef KOKKOS_ENABLE_CUDA
+void check_distinctive(Kokkos::Cuda exec1, Kokkos::Cuda exec2) {
+  ASSERT_NE(exec1.cuda_stream(), exec2.cuda_stream());
+}
+#endif
+#ifdef KOKKOS_ENABLE_HIP
+void check_distinctive(Kokkos::Experimental::HIP exec1,
+                       Kokkos::Experimental::HIP exec2) {
+  ASSERT_NE(exec1.hip_stream(), exec2.hip_stream());
+}
+#endif
+}  // namespace
+
+void test_partitioning(std::vector<TEST_EXECSPACE>& instances) {
+  check_distinctive(instances[0], instances[1]);
+  int sum1, sum2;
+  int N = 3910;
+  Kokkos::parallel_reduce(
+      Kokkos::RangePolicy<TEST_EXECSPACE>(instances[0], 0, N), SumFunctor(),
+      sum1);
+  Kokkos::parallel_reduce(
+      Kokkos::RangePolicy<TEST_EXECSPACE>(instances[1], 0, N), SumFunctor(),
+      sum2);
+  ASSERT_EQ(sum1, sum2);
+  ASSERT_EQ(sum1, N * (N - 1) / 2);
+
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
+  // Eliminate unused function warning
+  // (i.e. when compiling for Serial and CUDA, during Serial compilation the
+  // Cuda overload is unused ...)
+  if (sum1 != sum2) {
+#ifdef KOKKOS_ENABLE_CUDA
+    check_distinctive(Kokkos::Cuda(), Kokkos::Cuda());
+#endif
+#ifdef KOKKOS_ENABLE_HIP
+    check_distinctive(Kokkos::Experimental::HIP(), Kokkos::Experimental::HIP());
+#endif
   }
+#endif
 }
 
-// Test whether allocations survive Kokkos initialize/finalize if done via Raw
-// HIP.
-TEST(hip, raw_hip_interop) {
-  int* p;
-  KOKKOS_IMPL_HIP_SAFE_CALL(hipMalloc(&p, sizeof(int) * 100));
-  Kokkos::InitArguments arguments{-1, -1, -1, false};
-  Kokkos::initialize(arguments);
+TEST(TEST_CATEGORY, partitioning_by_args) {
+  auto instances =
+      Kokkos::Experimental::partition_space(TEST_EXECSPACE(), 1, 1.);
+  ASSERT_EQ(int(instances.size()), 2);
+  test_partitioning(instances);
+}
 
-  Kokkos::View<int*, Kokkos::MemoryTraits<Kokkos::Unmanaged>> v(p, 100);
-  Kokkos::deep_copy(v, 5);
-
-  Kokkos::finalize();
-
-  offset<<<dim3(100), dim3(100), 0, nullptr>>>(p);
-  KOKKOS_IMPL_HIP_SAFE_CALL(hipDeviceSynchronize());
-
-  std::array<int, 100> h_p;
-  KOKKOS_IMPL_HIP_SAFE_CALL(
-      hipMemcpy(h_p.data(), p, sizeof(int) * 100, hipMemcpyDefault));
-  KOKKOS_IMPL_HIP_SAFE_CALL(hipDeviceSynchronize());
-  int64_t sum        = 0;
-  int64_t sum_expect = 0;
-  for (int i = 0; i < 100; i++) {
-    sum += h_p[i];
-    sum_expect += 5 + i;
-  }
-
-  ASSERT_EQ(sum, sum_expect);
-  KOKKOS_IMPL_HIP_SAFE_CALL(hipFree(p));
+TEST(TEST_CATEGORY, partitioning_by_vector) {
+  std::vector<int> weights{1, 1};
+  auto instances =
+      Kokkos::Experimental::partition_space(TEST_EXECSPACE(), weights);
+  ASSERT_EQ(int(instances.size()), 2);
+  test_partitioning(instances);
 }
 }  // namespace Test
