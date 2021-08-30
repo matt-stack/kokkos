@@ -171,7 +171,7 @@ Options can be enabled by specifying `-DKokkos_ENABLE_X`.
 * Kokkos_ENABLE_HPX_ASYNC_DISPATCH
     * Whether HPX supports asynchronous dispatch
     * BOOL Default: OFF
-* KOKKOS_ENABLE_IMPL_CUDA_MALLOC_ASYNC
+* Kokkos_ENABLE_IMPL_CUDA_MALLOC_ASYNC
     * Whether to enable CudaMallocAsync (requires CUDA Toolkit 11.2)
     * BOOL Default: OFF
 * Kokkos_ENABLE_LARGE_MEM_TESTS
