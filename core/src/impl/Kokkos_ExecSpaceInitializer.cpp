@@ -42,5 +42,43 @@
 //@HEADER
 */
 
-#include <TestHIPHostPinned_Category.hpp>
-#include <TestViewAPI_a.hpp>
+#include "Kokkos_Core.hpp"
+#include "Kokkos_ExecSpaceInitializer.hpp"
+
+#include <sstream>
+
+namespace Kokkos {
+namespace Impl {
+void ExecSpaceInitializerBase::initialize(const InitArguments &args) {
+  if (m_is_finalized) {
+    std::stringstream abort_msg;
+    abort_msg << "Calling Kokkos::initialize after ExecSpace \"";
+    print_exec_space_name(abort_msg);
+    abort_msg << "\" was already finalized is illegal\n";
+    Kokkos::abort(abort_msg.str().c_str());
+  }
+
+  if (m_is_initialized) return;
+
+  m_is_initialized = true;
+
+  do_initialize(args);
+}
+
+void ExecSpaceInitializerBase::finalize(const bool all_spaces) {
+  if (!m_is_initialized) {
+    std::stringstream abort_msg;
+    abort_msg << "Calling Kokkos::finalize without ExecSpace \"";
+    print_exec_space_name(abort_msg);
+    abort_msg << "\" having been initialized is illegal\n";
+    Kokkos::abort(abort_msg.str().c_str());
+  }
+
+  if (m_is_finalized) return;
+
+  m_is_finalized = true;
+
+  do_finalize(all_spaces);
+}
+}  // namespace Impl
+}  // namespace Kokkos
