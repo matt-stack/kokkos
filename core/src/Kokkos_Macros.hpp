@@ -134,36 +134,6 @@
   #define KOKKOS_CUDA_DEVICE_COMPILE 1
 #endif
 
-#if 0
-// Use STDPAR variables as a workaround for the absence of __CUDA_ARCH__ for nvc++.
-
-#if defined(__NVCOMPILER_CUDA__)
-#define STDPAR_IS_DEVICE_CODE __builtin_is_device_code()
-#define STDPAR_IS_HOST_CODE (!__builtin_is_device_code())
-#define STDPAR_INCLUDE_DEVICE_CODE 1
-#define STDPAR_INCLUDE_HOST_CODE 1
-#define STDPAR_CUDA_ARCH __NVCOMPILER_CUDA_ARCH__
-#if(__NVCOMPILER_CUDA_ARCH__ < 300)
-    #error "Cuda device capability >= 3.0 is required."
-#endif 
-#elif defined(__CUDA_ARCH__)
-#define STDPAR_IS_DEVICE_CODE 1
-#define STDPAR_IS_HOST_CODE 0
-#define STDPAR_INCLUDE_DEVICE_CODE 1
-#define STDPAR_INCLUDE_HOST_CODE 0
-#define STDPAR_CUDA_ARCH __CUDA_ARCH__
-#if(__CUDA_ARCH__ < 300)
-    #error "Cuda device capability >= 3.0 is required."
-#endif 
-#else
-#define STDPAR_IS_DEVICE_CODE 0
-#define STDPAR_IS_HOST_CODE 1
-#define __CUDA_ARCH__ 0
-#define STDPAR_INCLUDE_HOST_CODE 1
-#define STDPAR_CUDA_ARCH 0
-#endif 
-#endif
-
 #if defined(_WIN32)
 #define KOKKOS_IMPL_WINDOWS_CUDA
 #endif

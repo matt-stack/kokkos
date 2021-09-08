@@ -501,31 +501,31 @@ ifeq ($(KOKKOS_INTERNAL_USE_SERIAL), 1)
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_TM), 1)
-  tmp := $(call kokkos_append_header,"$H""if STDPAR_INCLUDE_HOST_CODE")
+  tmp := $(call kokkos_append_header,"$H""ifndef __CUDA_ARCH__")
   tmp := $(call kokkos_append_header,"$H""define KOKKOS_ENABLE_TM")
   tmp := $(call kokkos_append_header,"$H""endif")
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_ISA_X86_64), 1)
-  tmp := $(call kokkos_append_header,"$H""if STDPAR_INCLUDE_HOST_CODE")
+  tmp := $(call kokkos_append_header,"$H""ifndef __CUDA_ARCH__")
   tmp := $(call kokkos_append_header,"$H""define KOKKOS_USE_ISA_X86_64")
   tmp := $(call kokkos_append_header,"$H""endif")
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_ISA_KNC), 1)
-  tmp := $(call kokkos_append_header,"$H""if STDPAR_INCLUDE_HOST_CODE")
+  tmp := $(call kokkos_append_header,"$H""ifndef __CUDA_ARCH__")
   tmp := $(call kokkos_append_header,"$H""define KOKKOS_USE_ISA_KNC")
   tmp := $(call kokkos_append_header,"$H""endif")
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_ISA_POWERPCLE), 1)
-  tmp := $(call kokkos_append_header,"$H""if STDPAR_INCLUDE_HOST_CODE")
+  tmp := $(call kokkos_append_header,"$H""ifndef __CUDA_ARCH__")
   tmp := $(call kokkos_append_header,"$H""define KOKKOS_USE_ISA_POWERPCLE")
   tmp := $(call kokkos_append_header,"$H""endif")
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_ISA_POWERPCBE), 1)
-  tmp := $(call kokkos_append_header,"$H""if STDPAR_INCLUDE_HOST_CODE")
+  tmp := $(call kokkos_append_header,"$H""ifndef __CUDA_ARCH__")
   tmp := $(call kokkos_append_header,"$H""define KOKKOS_USE_ISA_POWERPCBE")
   tmp := $(call kokkos_append_header,"$H""endif")
 endif
