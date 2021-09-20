@@ -50,10 +50,6 @@
 #if defined(KOKKOS_ATOMIC_HPP) && !defined(KOKKOS_ATOMIC_FETCH_ADD_HPP)
 #define KOKKOS_ATOMIC_FETCH_ADD_HPP
 
-#if defined(KOKKOS_ENABLE_CUDA)
-#include <Cuda/Kokkos_Cuda_Version_9_8_Compatibility.hpp>
-#endif
-
 namespace Kokkos {
 
 //----------------------------------------------------------------------------
@@ -350,13 +346,9 @@ atomic_fetch_add(volatile T* const dest,
                                          const T>::type& val) {
   T return_val;
   // This is a way to (hopefully) avoid dead lock in a warp
-  int done = 0;
-#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-  unsigned int mask   = KOKKOS_IMPL_CUDA_ACTIVEMASK;
-  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
-#else
-  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
-#endif
+  int done                 = 0;
+  unsigned int mask        = __activemask();
+  unsigned int active      = __ballot_sync(mask, 1);
   unsigned int done_active = 0;
   while (active != done_active) {
     if (!done) {
@@ -371,18 +363,13 @@ atomic_fetch_add(volatile T* const dest,
       }
     }
 
-#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-    done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
-#else
-    done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
-#endif
+    done_active = __ballot_sync(mask, done);
   }
   return return_val;
 }
 #endif
 #endif
 //----------------------------------------------------------------------------
-#if !defined(KOKKOS_ENABLE_ROCM_ATOMICS) || !defined(KOKKOS_ENABLE_HIP_ATOMICS)
 #if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
@@ -435,6 +422,15 @@ inline unsigned long int atomic_fetch_add(
   _mm_prefetch((const char*)dest, _MM_HINT_ET0);
 #endif
   return __atomic_fetch_add(dest, val, 5);
+}
+
+inline unsigned long long int atomic_fetch_add(
+    volatile unsigned long long int* const dest,
+    const unsigned long long int val) {
+#if defined(KOKKOS_ENABLE_RFO_PREFETCH)
+  _mm_prefetch((const char*)dest, _MM_HINT_ET0);
+#endif
+  return __sync_fetch_and_add(dest, val);
 }
 
 #endif
@@ -581,7 +577,6 @@ T atomic_fetch_add(volatile T* const dest_v,
 
 #endif
 #endif
-#endif  // !defined ROCM_ATOMICS
 //----------------------------------------------------------------------------
 
 // dummy for non-CUDA Kokkos headers being processed by NVCC

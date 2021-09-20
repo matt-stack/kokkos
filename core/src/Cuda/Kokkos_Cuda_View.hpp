@@ -139,7 +139,7 @@ struct CudaLDGFetch {
 
   template <typename iType>
   KOKKOS_INLINE_FUNCTION ValueType operator[](const iType& i) const {
-    NV_IF_TARGET(NV_IS_DEVICE, (
+    NV_IF_TARGET(NV_PROVIDES_SM_35, (
       AliasType v = __ldg(reinterpret_cast<const AliasType*>(&m_ptr[i]));
       return *(reinterpret_cast<ValueType*>(&v));
     ), (

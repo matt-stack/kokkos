@@ -304,7 +304,7 @@ struct TestTaskTeam {
             TestTaskTeam(parfor_result, parreduce_check, parscan_result,
                          parscan_check, begin - 1));
 
-#if !defined(__HCC_ACCELERATOR__) && !defined(KOKKOS_CUDA_DEVICE_COMPILE)
+#if !defined(__HIP_DEVICE_COMPILE__) && !defined(KOKKOS_CUDA_DEVICE_COMPILE)
         assert(!future.is_null());
 #endif
 
@@ -508,7 +508,7 @@ struct TestTaskTeamValue {
         future = sched.task_spawn(TestTaskTeamValue(result, begin - 1),
                                   Kokkos::TaskTeam);
 
-#if !defined(__HCC_ACCELERATOR__) && !defined(KOKKOS_CUDA_DEVICE_COMPILE)
+#if !defined(__HIP_DEVICE_COMPILE__) && !defined(KOKKOS_CUDA_DEVICE_COMPILE)
         assert(!future.is_null());
 #endif
 
