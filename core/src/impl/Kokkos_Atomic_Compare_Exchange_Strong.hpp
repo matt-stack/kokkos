@@ -60,90 +60,6 @@
 
 namespace Kokkos {
 
-#if defined(_NVHPC_CUDA)
-
-template <typename T>
-__inline__ __host__ __device__ T atomic_compare_exchange(
-    volatile T* const dest, const T compare,
-    typename std::enable_if<sizeof(T) == sizeof(int), const T>::type val) {
-  if target (nv::target::is_device) {
-    const int tmp = atomicCAS((int*)dest, *((int*)&compare), *((int*)&val));
-    return *((T*)&tmp);
-  } else {
-    const int tmp = __sync_val_compare_and_swap((int*)dest, *((int*)&compare),
-        *((int*)&val));
-    return *((T*)&tmp);
-  }
-}
-
-template <typename T>
-__inline__ __host__ __device__ T atomic_compare_exchange(
-    volatile T* const dest, const T compare,
-    typename std::enable_if<sizeof(T) == sizeof(unsigned long long),
-                            const T>::type val){
-  if target (nv::target::is_device) {
-    const unsigned long long tmp = atomicCAS((unsigned long long*)dest,
-        *((unsigned long long*)&compare), *((unsigned long long*)&val));
-    return *((T*)&tmp);
-  } else {
-    const unsigned long long tmp = __sync_val_compare_and_swap(
-        (unsigned long long*)dest, *((unsigned long long*)&compare),
-        *((unsigned long long*)&val));
-    return *((T*)&tmp);
-  }
-}
-
-template <typename T>
-__inline__ __host__ __device__ T atomic_compare_exchange(
-    volatile T* const dest, const T& compare,
-    typename std::enable_if<sizeof(T) != sizeof(long long) &&
-                            sizeof(T) != sizeof(int), const T&>::type val) {
-  if target (nv::target::is_device) {
-    T return_val;
-    int done;
-#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-    unsigned int mask   = KOKKOS_IMPL_CUDA_ACTIVEMASK;
-    unsigned int active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, 1);
-#else
-    unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
-#endif
-    unsigned int done_active = 0;
-    while (active != done_active) {
-      if (!done) {
-        if (Impl::lock_address_cuda_space((void*)dest)) {
-          Kokkos::memory_fence();
-          return_val = *dest;
-          if (return_val == compare) *dest = val;
-          Kokkos::memory_fence();
-          Impl::unlock_address_cuda_space((void*)dest);
-          done = 1;
-        }
-      }
-#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
-      done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask, done);
-#else
-      done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
-#endif
-    }
-    return return_val;
-  } else {
-    while (!Impl::lock_address_host_space((void*)dest))
-      ;
-    Kokkos::memory_fence();
-    T return_val = *dest;
-    if (return_val == compare) {
-      *dest       = val;
-      const T tmp = *dest;
-      (void)tmp;
-      Kokkos::memory_fence();
-    }
-    Impl::unlock_address_host_space((void*)dest);
-    return return_val;
-  }
-}
-
-#else
-
 //----------------------------------------------------------------------------
 // Cuda native CAS supports int, unsigned int, and unsigned long long int
 // (non-standard type). Must cast-away 'volatile' for the CAS call.
@@ -405,8 +321,6 @@ atomic_compare_exchange(volatile T* const, const Kokkos::Impl::identity_t<T>,
   return T();
 }
 #endif
-
-#endif // !defined(_NVHPC_CUDA)
 
 template <typename T>
 KOKKOS_INLINE_FUNCTION bool atomic_compare_exchange_strong(
