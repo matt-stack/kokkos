@@ -621,6 +621,7 @@ TEST(TEST_CATEGORY, mathematical_functions_exponential_functions) {
   TEST_MATH_FUNCTION(exp)({-98.l, -7.6l, -.54l, 3.2l, 1.l, -0.l});
 #endif
 
+#ifndef _NVHPC_CUDA // exp2 not implemented in device code
   TEST_MATH_FUNCTION(exp2)({-9, -8, -7, -6, -5, 4, 3, 2, 1, 0});
   TEST_MATH_FUNCTION(exp2)({-9l, -8l, -7l, -6l, -5l, 4l, 3l, 2l, 1l, 0l});
   TEST_MATH_FUNCTION(exp2)({-9ll, -8ll, -7ll, -6ll, -5ll, 4ll, 3ll, 2ll, 1ll});
@@ -631,6 +632,7 @@ TEST(TEST_CATEGORY, mathematical_functions_exponential_functions) {
   TEST_MATH_FUNCTION(exp2)({-98., -7.6, -.54, 3.2, 1., -0.});
 #ifdef MATHEMATICAL_FUNCTIONS_HAVE_LONG_DOUBLE_OVERLOADS
   TEST_MATH_FUNCTION(exp2)({-98.l, -7.6l, -.54l, 3.2l, 1.l, -0.l});
+#endif
 #endif
 
   TEST_MATH_FUNCTION(expm1)({-9, -8, -7, -6, -5, 4, 3, 2, 1, 0});

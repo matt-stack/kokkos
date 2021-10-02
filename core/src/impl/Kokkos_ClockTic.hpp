@@ -84,6 +84,10 @@ uint64_t clock_tic() noexcept {
   // Return value of 64-bit hi-res clock register.
   if target (nv::target::is_device) {
     return clock64();
+  } else {
+    return (uint64_t)std::chrono::high_resolution_clock::now()
+        .time_since_epoch()
+        .count();
   }
 
 #elif defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
