@@ -109,6 +109,8 @@ namespace {
 __global__ void query_cuda_kernel_arch(int *d_arch) {
 #if defined(__CUDA_ARCH__)
   *d_arch = __CUDA_ARCH__;
+#elif defined(__NVCOMPILER_CUDA_ARCH__)
+  *d_arch = __NVCOMPILER_CUDA_ARCH__;
 #else
   *d_arch = 0;
 #endif
