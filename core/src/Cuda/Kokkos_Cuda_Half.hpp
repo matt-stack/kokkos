@@ -147,14 +147,14 @@ class alignas(2) half_t {
 
   KOKKOS_INLINE_FUNCTION
   half_t(const volatile half_t& rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     val = rhs.val;
 #else
     const volatile uint16_t* rv_ptr =
         reinterpret_cast<const volatile uint16_t*>(&rhs.val);
     const uint16_t rv_val = *rv_ptr;
     val                   = reinterpret_cast<const impl_type&>(rv_val);
-#endif  // __CUDA_ARCH__
+#endif  // __CUDA_ARCH__ || __NVCOMPILER_CUDA_ARCH__
   }
 
   // Don't support implicit conversion back to impl_type.
@@ -235,7 +235,7 @@ class alignas(2) half_t {
   KOKKOS_FUNCTION
   half_t operator+() const {
     half_t tmp = *this;
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     tmp.val = +tmp.val;
 #else
     tmp.val               = __float2half(+__half2float(tmp.val));
@@ -246,7 +246,7 @@ class alignas(2) half_t {
   KOKKOS_FUNCTION
   half_t operator-() const {
     half_t tmp = *this;
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     tmp.val = -tmp.val;
 #else
     tmp.val               = __float2half(-__half2float(tmp.val));
@@ -257,7 +257,7 @@ class alignas(2) half_t {
   // Prefix operators
   KOKKOS_FUNCTION
   half_t& operator++() {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     ++val;
 #else
     float tmp             = __half2float(val);
@@ -269,7 +269,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t& operator--() {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     --val;
 #else
     float tmp = __half2float(val);
@@ -318,7 +318,7 @@ class alignas(2) half_t {
   // Compound operators
   KOKKOS_FUNCTION
   half_t& operator+=(half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     val += rhs.val;
 #else
     val     = __float2half(__half2float(val) + __half2float(rhs.val));
@@ -360,7 +360,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t& operator-=(half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     val -= rhs.val;
 #else
     val     = __float2half(__half2float(val) - __half2float(rhs.val));
@@ -402,7 +402,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t& operator*=(half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     val *= rhs.val;
 #else
     val     = __float2half(__half2float(val) * __half2float(rhs.val));
@@ -444,7 +444,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t& operator/=(half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     val /= rhs.val;
 #else
     val     = __float2half(__half2float(val) / __half2float(rhs.val));
@@ -487,7 +487,7 @@ class alignas(2) half_t {
   // Binary Arithmetic
   KOKKOS_FUNCTION
   half_t friend operator+(half_t lhs, half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     lhs.val += rhs.val;
 #else
     lhs.val = __float2half(__half2float(lhs.val) + __half2float(rhs.val));
@@ -512,7 +512,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t friend operator-(half_t lhs, half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     lhs.val -= rhs.val;
 #else
     lhs.val = __float2half(__half2float(lhs.val) - __half2float(rhs.val));
@@ -537,7 +537,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t friend operator*(half_t lhs, half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     lhs.val *= rhs.val;
 #else
     lhs.val = __float2half(__half2float(lhs.val) * __half2float(rhs.val));
@@ -562,7 +562,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   half_t friend operator/(half_t lhs, half_t rhs) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     lhs.val /= rhs.val;
 #else
     lhs.val = __float2half(__half2float(lhs.val) / __half2float(rhs.val));
@@ -588,7 +588,7 @@ class alignas(2) half_t {
   // Logical operators
   KOKKOS_FUNCTION
   bool operator!() const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(!val);
 #else
     return !__half2float(val);
@@ -598,7 +598,7 @@ class alignas(2) half_t {
   // NOTE: Loses short-circuit evaluation
   KOKKOS_FUNCTION
   bool operator&&(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val && rhs.val);
 #else
     return __half2float(val) && __half2float(rhs.val);
@@ -608,7 +608,7 @@ class alignas(2) half_t {
   // NOTE: Loses short-circuit evaluation
   KOKKOS_FUNCTION
   bool operator||(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val || rhs.val);
 #else
     return __half2float(val) || __half2float(rhs.val);
@@ -618,7 +618,7 @@ class alignas(2) half_t {
   // Comparison operators
   KOKKOS_FUNCTION
   bool operator==(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val == rhs.val);
 #else
     return __half2float(val) == __half2float(rhs.val);
@@ -627,7 +627,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   bool operator!=(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val != rhs.val);
 #else
     return __half2float(val) != __half2float(rhs.val);
@@ -636,7 +636,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   bool operator<(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val < rhs.val);
 #else
     return __half2float(val) < __half2float(rhs.val);
@@ -645,7 +645,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   bool operator>(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val > rhs.val);
 #else
     return __half2float(val) > __half2float(rhs.val);
@@ -654,7 +654,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   bool operator<=(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val <= rhs.val);
 #else
     return __half2float(val) <= __half2float(rhs.val);
@@ -663,7 +663,7 @@ class alignas(2) half_t {
 
   KOKKOS_FUNCTION
   bool operator>=(half_t rhs) const {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
     return static_cast<bool>(val >= rhs.val);
 #else
     return __half2float(val) >= __half2float(rhs.val);
@@ -749,7 +749,7 @@ half_t cast_to_half(double val) {
 
 KOKKOS_INLINE_FUNCTION
 half_t cast_to_half(short val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return half_t(__short2half_rn(val));
 #else
   return half_t(__float2half(static_cast<float>(val)));
@@ -758,7 +758,7 @@ half_t cast_to_half(short val) {
 
 KOKKOS_INLINE_FUNCTION
 half_t cast_to_half(unsigned short val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return half_t(__ushort2half_rn(val));
 #else
   return half_t(__float2half(static_cast<float>(val)));
@@ -767,7 +767,7 @@ half_t cast_to_half(unsigned short val) {
 
 KOKKOS_INLINE_FUNCTION
 half_t cast_to_half(int val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return half_t(__int2half_rn(val));
 #else
   return half_t(__float2half(static_cast<float>(val)));
@@ -776,7 +776,7 @@ half_t cast_to_half(int val) {
 
 KOKKOS_INLINE_FUNCTION
 half_t cast_to_half(unsigned int val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return half_t(__uint2half_rn(val));
 #else
   return half_t(__float2half(static_cast<float>(val)));
@@ -785,7 +785,7 @@ half_t cast_to_half(unsigned int val) {
 
 KOKKOS_INLINE_FUNCTION
 half_t cast_to_half(long long val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return half_t(__ll2half_rn(val));
 #else
   return half_t(__float2half(static_cast<float>(val)));
@@ -794,7 +794,7 @@ half_t cast_to_half(long long val) {
 
 KOKKOS_INLINE_FUNCTION
 half_t cast_to_half(unsigned long long val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return half_t(__ull2half_rn(val));
 #else
   return half_t(__float2half(static_cast<float>(val)));
@@ -832,7 +832,7 @@ cast_from_half(half_t val) {
 template <class T>
 KOKKOS_INLINE_FUNCTION std::enable_if_t<std::is_same<T, short>::value, T>
 cast_from_half(half_t val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return __half2short_rz(half_t::impl_type(val));
 #else
   return static_cast<T>(__half2float(half_t::impl_type(val)));
@@ -843,7 +843,7 @@ template <class T>
 KOKKOS_INLINE_FUNCTION
     std::enable_if_t<std::is_same<T, unsigned short>::value, T>
     cast_from_half(half_t val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return __half2ushort_rz(half_t::impl_type(val));
 #else
   return static_cast<T>(__half2float(half_t::impl_type(val)));
@@ -852,7 +852,7 @@ KOKKOS_INLINE_FUNCTION
 template <class T>
 KOKKOS_INLINE_FUNCTION std::enable_if_t<std::is_same<T, int>::value, T>
 cast_from_half(half_t val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return __half2int_rz(half_t::impl_type(val));
 #else
   return static_cast<T>(__half2float(half_t::impl_type(val)));
@@ -862,7 +862,7 @@ cast_from_half(half_t val) {
 template <class T>
 KOKKOS_INLINE_FUNCTION std::enable_if_t<std::is_same<T, unsigned>::value, T>
 cast_from_half(half_t val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return __half2uint_rz(half_t::impl_type(val));
 #else
   return static_cast<T>(__half2float(half_t::impl_type(val)));
@@ -872,7 +872,7 @@ cast_from_half(half_t val) {
 template <class T>
 KOKKOS_INLINE_FUNCTION std::enable_if_t<std::is_same<T, long long>::value, T>
 cast_from_half(half_t val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return __half2ll_rz(half_t::impl_type(val));
 #else
   return static_cast<T>(__half2float(half_t::impl_type(val)));
@@ -883,7 +883,7 @@ template <class T>
 KOKKOS_INLINE_FUNCTION
     std::enable_if_t<std::is_same<T, unsigned long long>::value, T>
     cast_from_half(half_t val) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__NVCOMPILER_CUDA_ARCH__)
   return __half2ull_rz(half_t::impl_type(val));
 #else
   return static_cast<T>(__half2float(half_t::impl_type(val)));

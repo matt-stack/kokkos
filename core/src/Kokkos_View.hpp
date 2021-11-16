@@ -45,6 +45,8 @@
 #ifndef KOKKOS_VIEW_HPP
 #define KOKKOS_VIEW_HPP
 
+#include <stdio.h>
+
 #include <type_traits>
 #include <string>
 #include <algorithm>
@@ -1555,6 +1557,8 @@ class View : public ViewTraits<DataType, Properties...> {
 #if defined(KOKKOS_ENABLE_CUDA)
     if (std::is_same<Kokkos::CudaUVMSpace,
                      typename traits::device_type::memory_space>::value) {
+      // mstack
+      printf("True");
       typename traits::device_type::memory_space::execution_space().fence(
           "Kokkos::View<...>::View: fence after allocating UVM");
     }
