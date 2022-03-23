@@ -41,18 +41,18 @@
 // ************************************************************************
 //@HEADER
 */
+#include <impl/Kokkos_Tools.hpp>
 
-#ifndef KOKKOS_SETUP_SYCL_HPP_
-#define KOKKOS_SETUP_SYCL_HPP_
-
-#include <CL/sycl.hpp>
-
-#ifdef __SYCL_DEVICE_ONLY__
-#define KOKKOS_IMPL_DO_NOT_USE_PRINTF(format, ...)                \
-  do {                                                            \
-    const __attribute__((opencl_constant)) char fmt[] = (format); \
-    sycl::ext::oneapi::experimental::printf(fmt, ##__VA_ARGS__);  \
-  } while (0)
-#endif
-
-#endif
+int main(int argc, char* argv[]) {
+  Kokkos::Tools::initialize(argc, argv);
+  Kokkos::Tools::pushRegion(
+      "The unanimous Declaration of the thirteen united States of America, "
+      "When in the Course of human events, it becomes necessary for one people "
+      "to dissolve the political bands which have connected them with another, "
+      "and to assume among the powers of the earth, the separate and equal "
+      "station to which the Laws of Nature and of Nature's God entitle them, a "
+      "decent respect to the opinions of mankind requires that they should "
+      "declare the causes which impel them to the separation.");
+  Kokkos::Tools::popRegion();
+  Kokkos::Tools::finalize();
+}

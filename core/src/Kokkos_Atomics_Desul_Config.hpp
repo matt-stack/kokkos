@@ -41,18 +41,18 @@
 // ************************************************************************
 //@HEADER
 */
+#ifndef KOKKOS_ATOMICS_DESUL_CONFIG_HPP
+#define KOKKOS_ATOMICS_DESUL_CONFIG_HPP
 
-#ifndef KOKKOS_SETUP_SYCL_HPP_
-#define KOKKOS_SETUP_SYCL_HPP_
+#include <Kokkos_Macros.hpp>
 
-#include <CL/sycl.hpp>
-
-#ifdef __SYCL_DEVICE_ONLY__
-#define KOKKOS_IMPL_DO_NOT_USE_PRINTF(format, ...)                \
-  do {                                                            \
-    const __attribute__((opencl_constant)) char fmt[] = (format); \
-    sycl::ext::oneapi::experimental::printf(fmt, ##__VA_ARGS__);  \
-  } while (0)
+#ifdef KOKKOS_ENABLE_OPENMPTARGET
+#define DESUL_HAVE_OPENMP_ATOMICS
 #endif
 
+#if defined(KOKKOS_ARCH_KEPLER) || defined(KOKKOS_ARCH_MAXWELL) || \
+    defined(KOKKOS_ARCH_PASCAL)
+#define DESUL_CUDA_ARCH_IS_PRE_VOLTA
 #endif
+
+#endif  // KOKKOS_ATOMICS_DESUL_CONFIG_HPP

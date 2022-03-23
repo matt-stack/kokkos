@@ -42,23 +42,70 @@
 //@HEADER
 */
 
-#ifndef KOKKOS_IMPL_HOSTSPACE_DEEPCOPY_HPP
-#define KOKKOS_IMPL_HOSTSPACE_DEEPCOPY_HPP
+#ifndef KOKKOS_MIN_MAX_CLAMP_HPP
+#define KOKKOS_MIN_MAX_CLAMP_HPP
 
-#include <cstdint>
+#include <Kokkos_Macros.hpp>
+#include <Kokkos_Pair.hpp>
 
 namespace Kokkos {
+namespace Experimental {
 
-namespace Impl {
+// clamp
+template <class T>
+constexpr KOKKOS_INLINE_FUNCTION const T& clamp(const T& value, const T& lo,
+                                                const T& hi) {
+  KOKKOS_EXPECTS(!(hi < lo));
+  return (value < lo) ? lo : (hi < value) ? hi : value;
+}
 
-void hostspace_parallel_deepcopy(void* dst, const void* src, ptrdiff_t n);
-// DeepCopy called with an execution space that can't access HostSpace
-void hostspace_parallel_deepcopy_async(void* dst, const void* src, ptrdiff_t n);
-void hostspace_parallel_deepcopy_async(const DefaultHostExecutionSpace& exec,
-                                       void* dst, const void* src, ptrdiff_t n);
+template <class T, class ComparatorType>
+constexpr KOKKOS_INLINE_FUNCTION const T& clamp(const T& value, const T& lo,
+                                                const T& hi,
+                                                ComparatorType comp) {
+  KOKKOS_EXPECTS(!comp(hi, lo));
+  return comp(value, lo) ? lo : comp(hi, value) ? hi : value;
+}
 
-}  // namespace Impl
+// max
+template <class T>
+constexpr KOKKOS_INLINE_FUNCTION const T& max(const T& a, const T& b) {
+  return (a < b) ? b : a;
+}
 
+template <class T, class ComparatorType>
+constexpr KOKKOS_INLINE_FUNCTION const T& max(const T& a, const T& b,
+                                              ComparatorType comp) {
+  return comp(a, b) ? b : a;
+}
+
+// min
+template <class T>
+constexpr KOKKOS_INLINE_FUNCTION const T& min(const T& a, const T& b) {
+  return (b < a) ? b : a;
+}
+
+template <class T, class ComparatorType>
+constexpr KOKKOS_INLINE_FUNCTION const T& min(const T& a, const T& b,
+                                              ComparatorType comp) {
+  return comp(b, a) ? b : a;
+}
+
+// minmax
+template <class T>
+constexpr KOKKOS_INLINE_FUNCTION auto minmax(const T& a, const T& b) {
+  using return_t = ::Kokkos::pair<const T&, const T&>;
+  return (b < a) ? return_t{b, a} : return_t{a, b};
+}
+
+template <class T, class ComparatorType>
+constexpr KOKKOS_INLINE_FUNCTION auto minmax(const T& a, const T& b,
+                                             ComparatorType comp) {
+  using return_t = ::Kokkos::pair<const T&, const T&>;
+  return comp(b, a) ? return_t{b, a} : return_t{a, b};
+}
+
+}  // namespace Experimental
 }  // namespace Kokkos
 
-#endif  // KOKKOS_IMPL_HOSTSPACE_DEEPCOPY_HPP
+#endif

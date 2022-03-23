@@ -185,20 +185,18 @@ class ParallelFor<FunctorType, Kokkos::MDRangePolicy<Traits...>,
       : m_functor(arg_functor), m_policy(arg_policy) {}
 
   template <typename Policy, typename Functor>
-  static int max_tile_size_product(const Policy&, const Functor& f) {
+  static int max_tile_size_product(const Policy&, const Functor&) {
     using closure_type =
         ParallelFor<FunctorType, Kokkos::MDRangePolicy<Traits...>,
                     Kokkos::Experimental::HIP>;
     unsigned block_size =
         Kokkos::Experimental::Impl::hip_get_max_blocksize<closure_type,
-                                                          LaunchBounds>(f);
-    if (block_size > 0) {
-      return block_size;
-    } else {
+                                                          LaunchBounds>();
+    if (block_size == 0)
       Kokkos::Impl::throw_runtime_exception(
           std::string("Kokkos::Impl::ParallelFor< HIP > could not find a valid "
                       "tile size."));
-    }
+    return block_size;
   }
 };
 
@@ -249,7 +247,7 @@ class ParallelReduce<FunctorType, Kokkos::MDRangePolicy<Traits...>, ReducerType,
   size_type* m_scratch_flags;
   // Only let one Parallel/Scan modify the shared memory. The
   // constructor acquires the mutex which is released in the destructor.
-  std::unique_lock<std::mutex> m_shared_memory_lock;
+  std::lock_guard<std::mutex> m_shared_memory_lock;
 
   using DeviceIteratePattern = typename Kokkos::Impl::Reduce::DeviceIterateTile<
       Policy::rank, Policy, FunctorType, WorkTag, reference_type>;
@@ -354,12 +352,13 @@ class ParallelReduce<FunctorType, Kokkos::MDRangePolicy<Traits...>, ReducerType,
 
       m_scratch_space =
           ::Kokkos::Experimental::Impl::hip_internal_scratch_space(
+              m_policy.space(),
               ValueTraits::value_size(
                   ReducerConditional::select(m_functor, m_reducer)) *
-              block_size /* block_size == max block_count */);
+                  block_size /* block_size == max block_count */);
       m_scratch_flags =
           ::Kokkos::Experimental::Impl::hip_internal_scratch_flags(
-              sizeof(size_type));
+              m_policy.space(), sizeof(size_type));
 
       // REQUIRED ( 1 , N , 1 )
       const dim3 block(1, block_size, 1);
@@ -433,13 +432,13 @@ class ParallelReduce<FunctorType, Kokkos::MDRangePolicy<Traits...>, ReducerType,
                                  ->m_mutexSharedMemory) {}
 
   template <typename Policy, typename Functor>
-  static int max_tile_size_product(const Policy&, const Functor& f) {
+  static int max_tile_size_product(const Policy&, const Functor&) {
     using closure_type =
         ParallelReduce<FunctorType, Kokkos::MDRangePolicy<Traits...>,
                        ReducerType, Kokkos::Experimental::HIP>;
     unsigned block_size =
         Kokkos::Experimental::Impl::hip_get_max_blocksize<closure_type,
-                                                          LaunchBounds>(f);
+                                                          LaunchBounds>();
     if (block_size == 0) {
       Kokkos::Impl::throw_runtime_exception(
           std::string("Kokkos::Impl::ParallelReduce< HIP > could not find a "

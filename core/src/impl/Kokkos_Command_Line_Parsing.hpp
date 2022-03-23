@@ -42,17 +42,22 @@
 //@HEADER
 */
 
-#ifndef KOKKOS_SETUP_SYCL_HPP_
-#define KOKKOS_SETUP_SYCL_HPP_
+#ifndef KOKKOS_COMMAND_LINE_PARSING_HPP
+#define KOKKOS_COMMAND_LINE_PARSING_HPP
 
-#include <CL/sycl.hpp>
+#include <string>
+#include <iosfwd>
 
-#ifdef __SYCL_DEVICE_ONLY__
-#define KOKKOS_IMPL_DO_NOT_USE_PRINTF(format, ...)                \
-  do {                                                            \
-    const __attribute__((opencl_constant)) char fmt[] = (format); \
-    sycl::ext::oneapi::experimental::printf(fmt, ##__VA_ARGS__);  \
-  } while (0)
-#endif
+namespace Kokkos {
+namespace Impl {
+bool is_unsigned_int(const char* str);
+bool check_arg(char const* arg, char const* expected);
+// void throw_runtime_exception(const std::string& msg);
+bool check_int_arg(char const* arg, char const* expected, int* value);
+bool check_str_arg(char const* arg, char const* expected, std::string& value);
+void warn_deprecated_command_line_argument(std::string deprecated,
+                                           std::string valid);
+}  // namespace Impl
+}  // namespace Kokkos
 
 #endif

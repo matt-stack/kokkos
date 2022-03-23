@@ -212,6 +212,11 @@
 #define KOKKOS_ENABLE_PRAGMA_SIMD 1
 #endif
 
+// FIXME Workaround for ICE with intel 17,18,19 in Trilinos
+#if (KOKKOS_COMPILER_INTEL <= 1900)
+#define KOKKOS_IMPL_WORKAROUND_ICE_IN_TRILINOS_WITH_OLD_INTEL_COMPILERS
+#endif
+
 // FIXME_SYCL
 #if !defined(KOKKOS_ENABLE_SYCL)
 #define KOKKOS_ENABLE_PRAGMA_IVDEP 1
@@ -530,7 +535,11 @@
 #define KOKKOS_DEPRECATED_TRAILING_ATTRIBUTE
 #endif
 
-#if defined(KOKKOS_ENABLE_DEPRECATION_WARNINGS) && !defined(__NVCC__)
+// Guard intel compiler version <= 1900
+// intel error #2651: attribute does not apply to any entity
+// using <deprecated_type> KOKKOS_DEPRECATED = ...
+#if defined(KOKKOS_ENABLE_DEPRECATION_WARNINGS) && !defined(__NVCC__) && \
+    (KOKKOS_COMPILER_INTEL > 1900)
 #define KOKKOS_DEPRECATED [[deprecated]]
 #define KOKKOS_DEPRECATED_WITH_COMMENT(comment) [[deprecated(comment)]]
 #else

@@ -65,6 +65,23 @@ struct ChunkSize {
   ChunkSize(int value_) : value(value_) {}
 };
 
+class Cuda;  // forward decl
+namespace Impl {
+
+struct EmptyBackendData {};
+struct BlocksizeBackendData {
+  int block_size = -1;
+};
+template <typename>
+struct BackendData {
+  using type = EmptyBackendData;
+};
+template <>
+struct BackendData<Cuda> {
+  using type = BlocksizeBackendData;
+};
+
+}  // namespace Impl
 /** \brief  Execution policy for work over a range of an integral type.
  *
  * Valid template argument options:
@@ -86,6 +103,33 @@ struct ChunkSize {
  *
  *  Blocking is the granularity of partitioning the range among threads.
  */
+namespace Impl {
+// RangePolicyInternal mstack
+template <class ExecSpace, class... Properties>
+class RangePolicyInternal : public Impl::PolicyTraits<Properties...> {
+
+ public:
+
+  /*
+  template <class FunctorType, class Policy>
+  int max_block_size_internal(const FunctorType& f, const Policy& p, const ParallelForTag& t) const;
+  template <class FunctorType, class Policy>
+  int max_block_size_internal(const FunctorType& f, const Policy& p, const ParallelReduceTag& t) const;
+  */
+  template <class FunctorType, class Policy, class Tag>
+  int max_block_size_internal(const FunctorType& f, const Policy& p, const Tag&) const;
+
+  template <class FunctorType, class Policy, class Tag>
+  int opt_block_size_internal(const FunctorType& f, const Policy& p, const Tag&) const;
+  //int opt_block_size_internal(const FunctorType& f, const Policy& p, const ParallelForTag&) const;
+  //template <class FunctorType, class Policy, class Tag>
+  //int opt_block_size_internal(const FunctorType& f, const ParallelReduceTag&) const;
+
+};
+// end RangePolicyInternal
+} 
+// end namespace Impl
+//
 template <class... Properties>
 class RangePolicy : public Impl::PolicyTraits<Properties...> {
  public:
@@ -97,7 +141,9 @@ class RangePolicy : public Impl::PolicyTraits<Properties...> {
   typename traits::index_type m_end;
   typename traits::index_type m_granularity;
   typename traits::index_type m_granularity_mask;
-
+  using additional_data =
+      typename Impl::BackendData<typename traits::execution_space>::type;
+  additional_data m_additional_data;
   template <class... OtherProperties>
   friend class RangePolicy;
 
@@ -238,6 +284,10 @@ class RangePolicy : public Impl::PolicyTraits<Properties...> {
    *
    *  Typically used to partition a range over a group of threads.
    */
+  additional_data& impl_additional_data() { return m_additional_data; }
+  const additional_data& impl_const_additional_data() const {
+    return m_additional_data;
+  }
   struct WorkRange {
     using work_tag    = typename RangePolicy<Properties...>::work_tag;
     using member_type = typename RangePolicy<Properties...>::member_type;
@@ -274,6 +324,27 @@ class RangePolicy : public Impl::PolicyTraits<Properties...> {
     WorkRange();
     WorkRange& operator=(const WorkRange&);
   };
+
+  //mstack 
+
+#ifdef KOKKOS_ENABLE_TUNING
+  public:
+
+  template<class FunctorType, class Policy, class Tag> // put a redirection to Kokkos::Cuda
+    int max_block_size(const FunctorType& f, const Policy& p, const Tag& t) const {
+      Impl::RangePolicyInternal<Kokkos::Cuda, Properties...> test;
+      int sum = test.max_block_size_internal(f, p, t); // maybe loss the arguments? not sure if this RangePolicy has access to the functor
+      return sum;
+    };
+
+  template<class FunctorType, class Policy, class Tag> // put a redirection to Kokkos::Cuda
+    int opt_block_size(const FunctorType& f, const Policy& p, const Tag& t) const{
+      Impl::RangePolicyInternal<Kokkos::Cuda, Properties...> test;
+      int sum = test.opt_block_size_internal(f, p, t);
+        //int sum = 32;
+      return sum;
+    };
+#endif
 };
 
 }  // namespace Kokkos
@@ -429,6 +500,7 @@ class TeamPolicyInternal : public Impl::PolicyTraits<Properties...> {
                                           Type* const global_accum) const;
   };
 };
+
 
 struct PerTeamValue {
   int value;

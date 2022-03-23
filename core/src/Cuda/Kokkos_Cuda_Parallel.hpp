@@ -433,7 +433,117 @@ class TeamPolicyInternal<Kokkos::Cuda, Properties...>
   }
 };
 
+
+
+// RangePolicy TEST
+// mstack
+template <class... Properties>
+class RangePolicyInternal<Kokkos::Cuda, Properties...>
+    : public PolicyTraits<Properties...> {
+
+ public:
+
+  using traits = PolicyTraits<Properties...>;
+
+  template <class FunctorType, class Policy, class Tag>
+  //int max_block_size_internal(const FunctorType& f, const Policy& policy, const ParallelForTag&) const { //maybe we need to loss the args here? How do we get functor?
+  int max_block_size_internal(const FunctorType& f, const Policy& policy, const Tag&) const { //maybe we need to loss the args here? How do we get functor?
+        using closure_type =
+            Impl::ParallelFor<FunctorType, RangePolicy<Properties...>>;
+        cudaFuncAttributes attr =
+            CudaParallelLaunch<closure_type, typename traits::launch_bounds>::
+                get_cuda_func_attributes();
+        // CUDA version, doesn't work
+
+       // cudaFuncAttributes attr = Kokkos::Tools::Impl::get_cuda_func_attributes<
+       //     typename DriverFor<Tag>::template type<Functor, Policy<Traits...>,
+       //                                            Kokkos::Cuda, ReducerType>,
+            //typename Policy<Traits...>::launch_bounds>();
+
+        const int block_size =
+            Kokkos::Impl::cuda_get_max_block_size<FunctorType,
+                                                  typename traits::launch_bounds>(
+                policy.space().impl_internal_space_instance(),
+            attr, f, 1, 0, 0); 
+       return block_size;
+       //return 1000;
+  }
+
+  //template <class FunctorType>
+  //int max_block_size_internal(const FunctorType& f, const ParallelReduceTag&) const {
+/*
+  template <class FunctorType, class Policy>
+  int max_block_size_internal(const FunctorType& f, const Policy& policy, const ParallelReduceTag&) const { //maybe we need to loss the args here? How do we get functor?
+        // CUDA version, doesn't work
+        using traits = Kokkos::Impl::PolicyTraits<Traits...>;
+
+        cudaFuncAttributes attr = Kokkos::Tools::Impl::get_cuda_func_attributes<
+            typename DriverFor<Tag>::template type<Functor, Policy<Traits...>,
+                                                   Kokkos::Cuda, ReducerType>,
+            typename Policy<Traits...>::launch_bounds>();
+        const int block_size =
+            Kokkos::Impl::cuda_get_max_block_size<Functor,
+                                                  typename
+       traits::launch_bounds>( policy.space().impl_internal_space_instance(),
+       attr, functor, 1, 0, 0); return block_size;
+    //return 101;
+
+        using closure_type =
+            Impl::ParallelFor<FunctorType, RangePolicy<Properties...>>;
+        cudaFuncAttributes attr =
+            CudaParallelLaunch<closure_type, typename traits::launch_bounds>::
+                get_cuda_func_attributes();
+        // CUDA version, doesn't work
+
+       // cudaFuncAttributes attr = Kokkos::Tools::Impl::get_cuda_func_attributes<
+       //     typename DriverFor<Tag>::template type<Functor, Policy<Traits...>,
+       //                                            Kokkos::Cuda, ReducerType>,
+            //typename Policy<Traits...>::launch_bounds>();
+
+        const int block_size =
+            Kokkos::Impl::cuda_get_opt_block_size<FunctorType,
+                                                  typename traits::launch_bounds>(
+                policy.space().impl_internal_space_instance(),
+            attr, f, 1, 0, 0); 
+       return block_size;
+  }
+  */
+
+  template <class FunctorType, class Policy, class Tag>
+  int opt_block_size_internal(const FunctorType& f, const Policy& policy, const Tag&) const {
+  
+    //return 102;
+        using closure_type =
+            Impl::ParallelFor<FunctorType, RangePolicy<Properties...>>;
+        cudaFuncAttributes attr =
+            CudaParallelLaunch<closure_type, typename traits::launch_bounds>::
+                get_cuda_func_attributes();
+        // CUDA version, doesn't work
+
+       // cudaFuncAttributes attr = Kokkos::Tools::Impl::get_cuda_func_attributes<
+       //     typename DriverFor<Tag>::template type<Functor, Policy<Traits...>,
+       //                                            Kokkos::Cuda, ReducerType>,
+            //typename Policy<Traits...>::launch_bounds>();
+
+        const int block_size =
+            Kokkos::Impl::cuda_get_opt_block_size<FunctorType,
+                                                  typename traits::launch_bounds>(
+                policy.space().impl_internal_space_instance(),
+            attr, f, 1, 0, 0); 
+       return block_size;
+  }
+/*
+  template <class FunctorType>
+  int opt_block_size_internal(const FunctorType& f, const ParallelReduceTag&) const {
+  
+    //return 102;
+    return 1000;
+  }
+*/
+};
+
 }  // namespace Impl
+
 }  // namespace Kokkos
 
 //----------------------------------------------------------------------------
@@ -497,9 +607,11 @@ class ParallelFor<FunctorType, Kokkos::RangePolicy<Traits...>, Kokkos::Cuda> {
         CudaParallelLaunch<ParallelFor,
                            LaunchBounds>::get_cuda_func_attributes();
     const int block_size =
-        Kokkos::Impl::cuda_get_opt_block_size<FunctorType, LaunchBounds>(
-            m_policy.space().impl_internal_space_instance(), attr, m_functor, 1,
-            0, 0);
+        m_policy.impl_const_additional_data().block_size > 0
+            ? m_policy.impl_const_additional_data().block_size
+            : Kokkos::Impl::cuda_get_opt_block_size<FunctorType, LaunchBounds>(
+                  m_policy.space().impl_internal_space_instance(), attr,
+                  m_functor, 1, 0, 0);
     KOKKOS_ASSERT(block_size > 0);
     dim3 block(1, block_size, 1);
     dim3 grid(

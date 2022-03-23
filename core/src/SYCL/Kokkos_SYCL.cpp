@@ -131,7 +131,7 @@ void SYCL::impl_static_fence(const std::string& name) {
           GlobalDeviceSynchronization,
       [&]() {
         // guard accessing all_queues
-        std::lock_guard<std::mutex> lock(Impl::SYCLInternal::mutex);
+        std::scoped_lock lock(Impl::SYCLInternal::mutex);
         for (auto& queue : Impl::SYCLInternal::all_queues) {
           try {
             (*queue)->wait_and_throw();
@@ -268,9 +268,6 @@ std::ostream& SYCL::impl_sycl_info(std::ostream& os,
             << "\nVendor: " << device.get_info<device::vendor>()
             << "\nProfile: " << device.get_info<device::profile>()
             << "\nVersion: " << device.get_info<device::version>()
-            << "\nExtensions: "
-            << Container<std::vector<std::string>>(
-                   device.get_info<device::extensions>())
             << "\nPrintf Buffer Size: "
             << device.get_info<device::printf_buffer_size>()
             << "\nPreferred Interop User Sync: "
